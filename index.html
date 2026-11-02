@@ -222,7 +222,7 @@ h2{font-size:17px;margin:0 0 10px}
   <div class="t-logo">片</div>
   <h1 class="t-name">片付けナビ</h1>
   <p class="t-sub">写真を撮るだけで、片付ける順番がわかる</p>
-  <p class="note" style="margin:0">版 v7</p>
+  <p class="note t-ver" style="margin:0">版 v8</p>
   <button class="btn main t-start" id="startBtn">▶ はじめる</button>
 </section>
 
@@ -235,6 +235,7 @@ h2{font-size:17px;margin:0 0 10px}
   </div>
   <button class="linkbtn" id="goKey">🔑 AIの設定（Geminiの鍵）<span id="keyMark"></span></button>
   <button class="linkbtn" id="goRecords">📁 残した物の記録（<span id="recCount">0</span>件）</button>
+  <a class="linkbtn" href="privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a>
   <button class="linkbtn" id="backTitle">← タイトルに戻る</button>
 </section>
 
@@ -1019,6 +1020,7 @@ load(); show("home");
       <h2>続けるコツ</h2>
       <ul class="tips" id="tips"></ul>
     </div>
+    <button class="linkbtn" id="rptOpen" style="display:block;margin:0 auto">⚠️ AIの答えがおかしい・不適切な時は報告する</button>
   </section>
 </div>
 
@@ -1028,6 +1030,26 @@ load(); show("home");
     <div class="pop-title">お疲れさまでした！</div>
     <p class="pop-text" id="popText">お部屋がすっきりしましたね。</p>
     <button class="btn main" id="popBack">最初に戻る</button>
+  </div>
+</div>
+
+<div class="pop hidden" id="rpt" role="dialog" aria-label="AIの答えを報告">
+  <div class="pop-card" style="text-align:left">
+    <div class="pop-title" style="font-size:20px">AIの答えを報告</div>
+    <p class="pop-text" style="font-size:14px">いただいた報告は、AIの案内を良くするために使います。写真は送られません。</p>
+    <div class="rptlist" id="rptReasons">
+      <label class="opt"><input type="radio" name="rptR" value="不適切・失礼な内容" checked><span>不適切・失礼な内容がある</span></label>
+      <label class="opt"><input type="radio" name="rptR" value="危ない案内"><span>危ない案内がある</span></label>
+      <label class="opt"><input type="radio" name="rptR" value="写真と合っていない"><span>写真と合っていない・番号の場所がちがう</span></label>
+      <label class="opt"><input type="radio" name="rptR" value="その他"><span>その他</span></label>
+    </div>
+    <textarea id="rptText" rows="3" placeholder="くわしく（なくてもOK）" style="width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:15px;background:var(--bg);color:var(--ink);font-family:inherit;margin-top:8px"></textarea>
+    <div class="stackb" style="margin-top:10px">
+      <a class="btn main" id="rptMail" href="#" style="text-decoration:none">メールで報告する</a>
+      <button class="btn ghost" id="rptCopy">報告文をコピーする</button>
+      <p class="note" id="rptNote" style="text-align:center;margin:0"></p>
+      <button class="btn ghost" id="rptClose">閉じる</button>
+    </div>
   </div>
 </div>
 
@@ -1706,6 +1728,26 @@ $("backTitle").onclick = () => show("vTitle");
 $("goHome").onclick = () => show("vHome");
 $("homeBack").onclick = () => show("vMode");
 $("goRecords").onclick = () => show("vRecords");
+// ===== AIの答えの報告（Google Playの決まり：AIが作った内容を報告できること） =====
+const CONTACT = "breaklight.ichi@gmail.com";
+function rptBody() {
+  const r = (document.querySelector('input[name="rptR"]:checked') || {}).value || "";
+  const steps = plan && plan.steps ? plan.steps.map((st, i) => `${i + 1}. ${st.place || ""}`).join("\n") : "";
+  return `【理由】${r}\n【くわしく】${$("rptText").value.trim()}\n\n【AIの答え（要約）】\n${plan ? plan.summary || "" : ""}\n${steps}\n\n（片付けナビ ${document.querySelector(".t-ver") ? document.querySelector(".t-ver").textContent : ""}）`;
+}
+function rptLink() {
+  $("rptMail").href = `mailto:${CONTACT}?subject=${encodeURIComponent("片付けナビ：AIの答えの報告")}&body=${encodeURIComponent(rptBody())}`;
+}
+$("rptOpen").onclick = () => { $("rptText").value = ""; $("rptNote").textContent = `送り先：${CONTACT}`; rptLink(); $("rpt").classList.remove("hidden"); };
+$("rptReasons").onchange = rptLink;
+$("rptText").oninput = rptLink;
+$("rptClose").onclick = () => $("rpt").classList.add("hidden");
+$("rptCopy").onclick = async () => {
+  const t = `送り先：${CONTACT}\n件名：片付けナビ：AIの答えの報告\n\n${rptBody()}`;
+  try { await navigator.clipboard.writeText(t); $("rptNote").textContent = `コピーしました。${CONTACT} あてにメールで送ってください。`; }
+  catch (e) { $("rptText").value = t; $("rptText").select(); $("rptNote").textContent = "上の文を長押ししてコピーしてください。"; }
+};
+
 // ===== AIの設定画面 =====
 let keyReturn = "vMode";
 function keyStatus() {
