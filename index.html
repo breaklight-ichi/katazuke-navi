@@ -1,0 +1,1991 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#e2683c">
+<meta name="description" content="部屋の写真を撮るだけで、片付ける順番と方法がわかるアプリ">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<title>片付けナビ</title>
+<style>
+:root{
+  --bg:#f6f3ee; --card:#ffffff; --ink:#2b2622; --sub:#6d645c; --line:#e4ddd3;
+  --accent:#e2683c; --prot:#2f80ed; --accent-ink:#ffffff; --ok:#3f9a6b; --soft:#fbeee6; --shadow:0 2px 10px rgba(60,40,20,.08);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#1c1a18; --card:#272421; --ink:#f1ece6; --sub:#b3a99f; --line:#3a3530;
+    --accent:#f07a4e; --accent-ink:#1c1a18; --ok:#5cc08c; --soft:#3a2a22; --shadow:none;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1c1a18; --card:#272421; --ink:#f1ece6; --sub:#b3a99f; --line:#3a3530;
+  --accent:#f07a4e; --accent-ink:#1c1a18; --ok:#5cc08c; --soft:#3a2a22; --shadow:none;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Hiragino Sans","Noto Sans JP","Yu Gothic",system-ui,sans-serif;line-height:1.6;-webkit-text-size-adjust:100%}
+.wrap{max-width:640px;margin:0 auto;padding:16px 16px 48px}
+header{display:flex;align-items:center;gap:10px;margin:4px 0 14px}
+.logo{width:40px;height:40px;border-radius:12px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-weight:800;font-size:20px;flex:none}
+h1{font-size:22px;margin:0;letter-spacing:.02em}
+.tag{font-size:13px;color:var(--sub);margin:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:var(--shadow)}
+.pickbtn{position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:999px;padding:15px 20px;font-size:17px;font-weight:700;margin-bottom:10px;background:var(--card);color:var(--ink)}
+.pickbtn.main{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.pickbtn.small{flex:1;margin:0;padding:13px 20px;font-size:16px;font-weight:600}
+.picker{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:200px}
+.protect{border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:12px}
+.way{border-top:1px dashed var(--line);margin-top:10px;padding-top:10px;font-size:15px}
+.vrow{display:flex;gap:8px}
+.vrow input{flex:1;min-width:0;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:16px;background:var(--bg);color:var(--ink);font-family:inherit}
+.mic{width:48px;flex:none;border:0;border-radius:12px;background:var(--prot);color:#fff;font-size:22px;cursor:pointer}
+.mic.on{background:#e74c3c;animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.6}}
+.pr polygon{fill:rgba(47,128,237,.14);stroke:#2f80ed;stroke-width:4px;stroke-dasharray:12 6;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+.pr polyline{fill:none;stroke:#2f80ed;stroke-width:4px;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}
+.kf circle{fill:#2f80ed;stroke:#fff;stroke-width:2px;vector-effect:non-scaling-stroke}
+.kf text{fill:#fff;font-weight:800;text-anchor:middle;dominant-baseline:central;font-family:system-ui,sans-serif}
+.protect-head{display:flex;align-items:baseline;gap:6px;font-size:16px}
+.btn.mark{background:var(--prot);color:#fff;margin-top:6px}
+.btn.mark.on{background:#ffb800;color:#2b2622}
+.markrow{display:flex;align-items:center;gap:8px;margin-top:8px}
+.markrow input{flex:1;min-width:0;border:1px solid var(--line);border-radius:10px;padding:9px 10px;font-size:16px;background:var(--bg);color:var(--ink);font-family:inherit}
+.pnum{min-width:34px;height:28px;border-radius:8px;background:var(--prot);color:#fff;font-weight:800;font-size:13px;display:grid;place-items:center;flex:none}
+.del{border:0;background:transparent;color:var(--sub);font-size:20px;cursor:pointer;padding:4px 8px}
+.opt{display:flex;gap:8px;align-items:flex-start;font-size:14px;margin-top:10px;cursor:pointer}
+.opt input{width:18px;height:18px;margin-top:3px;flex:none;accent-color:var(--prot)}
+.photo.marking svg{touch-action:none;cursor:crosshair}
+.pr rect{fill:rgba(47,128,237,.14);stroke:#2f80ed;stroke-width:4px;stroke-dasharray:12 6;vector-effect:non-scaling-stroke}
+.pr rect.lab{fill:#2f80ed;stroke:#fff;stroke-width:2px;stroke-dasharray:none}
+.pr text{fill:#fff;font-weight:800;dominant-baseline:central;font-family:system-ui,sans-serif}
+.mk.prot circle.ring{stroke:#2f80ed;fill:rgba(47,128,237,.10)}
+.mk.prot circle.badge{fill:#2f80ed}
+.step.prot .num{background:var(--prot)}
+.seen{font-size:14px;background:var(--soft);border-radius:10px;padding:8px 12px;margin-top:10px}
+.seen ul{margin:4px 0 0;padding-left:20px}
+.dec{border-top:1px solid var(--line);padding:12px 0}
+.dec:first-of-type{border-top:0;padding-top:0}
+.dec-top{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.chip{font-size:12px;font-weight:700;border-radius:99px;padding:2px 10px}
+.chip.keep{background:#dff3e8;color:#23704a}.chip.go{background:#fde2d6;color:#a8461f}.chip.hold{background:#ece7df;color:#6d645c}
+.choice{display:flex;gap:6px;margin-top:8px}
+.choice button{flex:1;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:99px;padding:7px 0;font-size:14px;font-family:inherit;cursor:pointer}
+.choice button.sel{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.pickhint{background:#fff4d6;color:#6b4e00;border-radius:10px;padding:10px 12px;font-size:14px;font-weight:600;margin-bottom:10px}
+.rooms{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px}
+.rooms button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:99px;padding:8px 14px;font-size:15px;font-family:inherit;cursor:pointer}
+.rooms button.sel{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:700}
+.keepbox{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:12px;font-size:15px}
+.addbtn{flex:none;border:0;border-radius:12px;background:var(--ink);color:var(--bg);padding:0 14px;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer}
+.keepchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.keepchips span{background:var(--prot);color:#fff;border-radius:99px;padding:4px 6px 4px 12px;font-size:14px;font-weight:600;display:inline-flex;align-items:center;gap:2px}
+.keepchips button{border:0;background:transparent;color:#fff;font-size:16px;cursor:pointer;padding:0 6px}
+.step-foot{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.keepbtn{border:1px solid var(--prot);background:transparent;color:var(--prot);border-radius:99px;padding:5px 12px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer}
+.step.kept{border-color:var(--prot);opacity:.75}
+.step.kept .num{background:var(--prot)}
+.step.kept .check{display:none}
+.step.kept .keepbtn{background:var(--prot);color:#fff}
+.step.kept ol,.step.kept .why{display:none}
+.keptlabel{display:none;font-size:13px;color:var(--prot);font-weight:700}
+.step.kept .keptlabel{display:inline}
+.mk.kept circle.badge{fill:#2f80ed}
+.mk.kept circle.ring{stroke:#2f80ed;stroke-dasharray:6 6}
+.btn.finish{background:var(--ok);color:#fff;font-size:18px;padding:16px;margin-top:6px;animation:pulse2 1.4s infinite}
+@keyframes pulse2{50%{transform:scale(1.03)}}
+.pop{position:fixed;inset:0;background:rgba(0,0,0,.45);display:grid;place-items:center;padding:16px;z-index:10}
+.pop-card{background:var(--card);border-radius:24px;padding:28px 22px;text-align:center;max-width:360px;width:100%;animation:popin .5s cubic-bezier(.2,1.6,.4,1)}
+@keyframes popin{from{transform:scale(.3);opacity:0}to{transform:scale(1);opacity:1}}
+.pop-confetti{font-size:34px;letter-spacing:4px;animation:bounce 1s infinite alternate}
+@keyframes bounce{to{transform:translateY(-8px)}}
+.pop-title{font-size:30px;font-weight:900;color:var(--accent);margin:10px 0 6px}
+.pop-text{font-size:15px;color:var(--sub);margin:0 0 18px}
+.paste-help{border-top:1px solid var(--line);margin-top:12px;padding-top:12px;font-size:14px}
+.paste-help ol{margin:4px 0 8px;padding-left:20px}
+.pastebox{border:2px dashed var(--line);border-radius:12px;padding:18px 10px;text-align:center;color:var(--sub);font-size:15px;outline:none;-webkit-user-select:text;user-select:text}
+.pastebox:focus{border-color:var(--accent)}
+.drop{display:block;border:2px dashed var(--line);border-radius:14px;padding:26px 12px;text-align:center;cursor:pointer}
+.drop:hover{border-color:var(--accent)}
+.drop strong{display:block;font-size:17px;margin-bottom:4px}
+.drop span{font-size:13px;color:var(--sub)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:0;border-radius:999px;padding:13px 20px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;width:100%}
+.btn.main{background:var(--accent);color:var(--accent-ink)}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line);font-weight:600}
+.btn:disabled{opacity:.5;cursor:default}
+.row{display:flex;gap:10px;margin-top:12px}
+.row .btn{flex:1}
+.photo{position:relative;border-radius:12px;overflow:hidden;background:#000;line-height:0}
+.photo img{width:100%;height:auto;display:block}
+.photo svg{position:absolute;inset:0;width:100%;height:100%}
+.mk{cursor:pointer}
+.mk circle.ring{fill:rgba(226,104,60,.12);stroke:#ff7a45;stroke-width:4px;vector-effect:non-scaling-stroke}
+.mk circle.badge{fill:#ff7a45;stroke:#fff;stroke-width:2px;vector-effect:non-scaling-stroke}
+.mk text{fill:#fff;font-weight:800;text-anchor:middle;dominant-baseline:central;font-family:system-ui,sans-serif}
+.mk circle.ring{stroke-width:3px;fill:rgba(226,104,60,.08)}
+.mk circle.halo{fill:rgba(255,210,63,.35);stroke:#ffd23f;stroke-width:3px;vector-effect:non-scaling-stroke}
+.mk line.lead{stroke:#fff;stroke-width:2.5px;vector-effect:non-scaling-stroke}
+.mk circle.dot{fill:#fff;stroke:#ff7a45;stroke-width:2px;vector-effect:non-scaling-stroke}
+.mk.done circle.ring{stroke:#5cc08c;fill:rgba(92,192,140,.12);stroke-dasharray:8 6}
+.mk.done circle.badge{fill:#5cc08c}
+.mk.active circle.ring{stroke:#ffd23f;fill:rgba(255,210,63,.18);stroke-width:6px}
+.mk.active circle.badge{fill:#ffb800}
+.status{font-size:14px;color:var(--sub);text-align:center;margin-top:10px;min-height:1.6em}
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:sp 1s linear infinite;vertical-align:-2px;margin-right:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.summary{background:var(--soft);border-radius:12px;padding:12px 14px;font-size:15px}
+.summary b{color:var(--accent)}
+.progress{height:8px;background:var(--line);border-radius:99px;overflow:hidden;margin-top:10px}
+.progress i{display:block;height:100%;background:var(--ok);width:0;transition:width .3s}
+h2{font-size:17px;margin:0 0 10px}
+.step{border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:10px;transition:border-color .2s,background .2s}
+.step.active{border-color:#ffb800;background:var(--soft)}
+.step.done{opacity:.6}
+.step-head{display:flex;align-items:center;gap:10px;cursor:pointer}
+.num{width:32px;height:32px;border-radius:50%;background:#ff7a45;color:#fff;font-weight:800;display:grid;place-items:center;flex:none}
+.step.done .num{background:var(--ok)}
+.step-title{font-weight:700;font-size:16px;flex:1}
+.mins{font-size:12px;color:var(--sub);white-space:nowrap}
+.why{font-size:13px;color:var(--sub);margin:8px 0 4px}
+.step ol{margin:6px 0 8px;padding-left:22px;font-size:15px}
+.step ol li{margin:2px 0}
+.check{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;cursor:pointer;user-select:none}
+.check input{width:20px;height:20px;accent-color:var(--ok)}
+.tool{display:flex;gap:12px;border-top:1px solid var(--line);padding:12px 0}
+.tool:first-of-type{border-top:0;padding-top:0}
+.tool-ico{width:40px;height:40px;border-radius:10px;background:var(--soft);display:grid;place-items:center;font-size:22px;flex:none}
+.tool-name{font-weight:700}
+.tool-prod{font-size:14px;color:var(--accent);font-weight:600}
+.tool-why{font-size:13px;color:var(--sub)}
+.tool-for{font-size:12px;color:var(--sub)}
+.shop{display:inline-flex;gap:8px;margin-top:6px;flex-wrap:wrap}
+.shop a{font-size:12px;color:var(--ink);border:1px solid var(--line);border-radius:99px;padding:3px 10px;text-decoration:none}
+.note{font-size:12px;color:var(--sub);margin-top:8px}
+.hidden{display:none !important}
+.screen{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 16px;text-align:center;gap:14px}
+.t-logo{width:96px;height:96px;border-radius:28px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-size:52px;font-weight:900;box-shadow:0 8px 24px rgba(226,104,60,.35);animation:floaty 3s ease-in-out infinite}
+@keyframes floaty{50%{transform:translateY(-6px)}}
+.t-name{font-size:38px;font-weight:900;margin:6px 0 0;letter-spacing:.06em}
+.t-sub{color:var(--sub);font-size:15px;margin:0 0 18px}
+.t-start{max-width:300px;font-size:22px;padding:18px}
+.modes{display:grid;gap:14px;width:100%;max-width:420px}
+.mode{border:2px solid var(--line);background:var(--card);color:var(--ink);border-radius:20px;padding:18px;font-family:inherit;cursor:pointer;text-align:left;display:flex;gap:14px;align-items:center}
+.mode:active{transform:scale(.98)}
+.mode .ico{font-size:40px;flex:none}
+.mode b{display:block;font-size:20px}
+.mode span{font-size:13px;color:var(--sub)}
+.mode.home{border-color:var(--accent)}
+.mode.out{border-color:#167a72}
+.linkbtn{border:0;background:transparent;color:var(--sub);font-size:15px;font-family:inherit;cursor:pointer;text-decoration:underline;padding:8px}
+.topbar{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.back{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:99px;padding:7px 14px;font-size:14px;font-family:inherit;cursor:pointer}
+.bgm{position:fixed;top:calc(10px + env(safe-area-inset-top,0px));right:12px;z-index:20;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:99px;padding:6px 12px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;box-shadow:var(--shadow)}
+.bgm.off{opacity:.6}
+#outApp{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;z-index:5}
+#outApp .ob{padding:10px 16px 6px;display:flex;gap:8px;align-items:center}
+#outFrame{flex:1;border:0;width:100%;background:#eef3f2}
+.rec{display:flex;gap:12px;align-items:center;width:100%;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:16px;padding:10px;font-family:inherit;cursor:pointer;text-align:left;margin-bottom:10px}
+.rec img{width:84px;height:64px;object-fit:cover;border-radius:10px;flex:none;background:var(--soft)}
+.rec small{color:var(--sub);font-size:13px;display:block}
+.ritem{display:flex;gap:10px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:12px;margin-bottom:8px;cursor:pointer;font-size:16px}
+.ritem input{width:22px;height:22px;accent-color:var(--ok);flex:none}
+.ritem.ok{color:var(--sub);text-decoration:line-through}
+.rnum{min-width:28px;height:28px;border-radius:50%;background:var(--prot);color:#fff;display:grid;place-items:center;font-weight:800;font-size:13px;flex:none}
+.btn.danger{background:transparent;color:#c0392b;border:1px solid #c0392b}
+.gone{font-size:14px;color:var(--sub)}
+.pop-card .stackb{display:grid;gap:8px}
+.err{color:#c0392b;font-size:14px;text-align:center;margin-top:10px}
+.tips{font-size:15px;margin:0;padding-left:20px}
+.cheer{text-align:center;font-size:18px;font-weight:800;color:var(--ok);padding:8px 0}
+.keybox{display:grid;gap:12px;text-align:left}
+.keybox ol{margin:0;padding-left:22px;display:grid;gap:6px;font-size:15px}
+.keybox .vrow{display:flex;gap:8px}
+.keybox .vrow input{flex:1;min-width:0;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:16px;background:var(--bg);color:var(--ink);font-family:inherit}
+.keybox .eye{flex:none;border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:10px;padding:0 12px;font-size:14px;cursor:pointer;font-family:inherit}
+.keystate{font-size:14px;font-weight:700}
+.keystate.ok{color:var(--ok)}
+.keystate.ng{color:#c0392b}
+.keytbl{width:100%;border-collapse:collapse;font-size:13px}
+.keytbl th,.keytbl td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+.keytbl th{background:var(--soft)}
+.gnote{font-size:13px;color:var(--sub);background:var(--soft);border-radius:12px;padding:10px 12px}
+.biglink{display:block;text-align:center;background:var(--prot);color:#fff;text-decoration:none;font-weight:700;border-radius:999px;padding:12px}
+</style>
+</head>
+<body>
+
+<button class="bgm hidden" id="bgmBtn" aria-label="BGMの切り替え">♪ BGM オン</button>
+
+<!-- タイトル画面 -->
+<section class="screen" id="vTitle">
+  <div class="t-logo">片</div>
+  <h1 class="t-name">片付けナビ</h1>
+  <p class="t-sub">写真を撮るだけで、片付ける順番がわかる</p>
+  <button class="btn main t-start" id="startBtn">▶ はじめる</button>
+</section>
+
+<!-- 自宅か外出先か -->
+<section class="screen hidden" id="vMode">
+  <h2 style="font-size:22px;margin:0 0 6px">どこで使いますか？</h2>
+  <div class="modes">
+    <button class="mode home" id="goHome"><span class="ico">🏠</span><div><b>自宅</b><span>部屋の写真から、片付ける順番を教えます</span></div></button>
+    <button class="mode out" id="goOut"><span class="ico">🧳</span><div><b>外出先</b><span>どこに何を置いたかメモして、帰る時の忘れ物を防ぎます</span></div></button>
+  </div>
+  <button class="linkbtn" id="goKey">🔑 AIの設定（Geminiの鍵）<span id="keyMark"></span></button>
+  <button class="linkbtn" id="goRecords">📁 残した物の記録（<span id="recCount">0</span>件）</button>
+  <button class="linkbtn" id="backTitle">← タイトルに戻る</button>
+</section>
+
+<!-- 残した物の記録 -->
+<section class="hidden" id="vRecords">
+  <div class="wrap">
+    <div class="topbar"><button class="back" id="recBack">← もどる</button></div>
+    <h2>📁 残した物の記録</h2>
+    <p class="note" style="margin-top:-4px">片付けで残した物のリストと、片付ける前の写真です。元の場所に戻すときの参考にしてください。写真はこのスマホの中だけに保存され、どこにも送りません。</p>
+    <div id="recList"></div>
+    <div id="recDetail" class="hidden"></div>
+  </div>
+</section>
+
+<!-- 外出先（置き場所メモ） -->
+<div id="outApp" class="hidden">
+  <div class="ob"><button class="back" id="outBack">← もどる</button><b>外出先：置き場所メモ</b></div>
+  <iframe id="outFrame" title="置き場所メモ"></iframe>
+</div>
+<template id="okibaTpl"><title>置き場所メモ</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800&display=swap">
+<style>
+/* 1列のスマホ画面。写真が主役、その下に番号つきメモ、出発時はチェックリストに切り替わる */
+:root{
+  --bg:#eef3f2; --card:#ffffff; --ink:#1f2b2a; --sub:#5d6e6c; --line:#d6e1df;
+  --accent:#167a72; --accent-ink:#ffffff; --pin:#ffc533; --pin-ink:#1f2b2a;
+  --done:#9aa8a6; --ok:#2e9b5d; --soft:#dcefeb; --warn:#c2492f;
+  --display:"M PLUS Rounded 1c","Hiragino Maru Gothic ProN","Hiragino Sans",system-ui,sans-serif;
+  --body:"Hiragino Sans","Noto Sans JP","Yu Gothic",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#141c1b; --card:#1e2928; --ink:#e8f0ee; --sub:#9db0ad; --line:#30403e;
+    --accent:#3cb8ab; --accent-ink:#0f1716; --pin:#ffd25c; --pin-ink:#1f2b2a;
+    --done:#5f6f6d; --ok:#4fc283; --soft:#1f3532; --warn:#ef7a5f; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#141c1b; --card:#1e2928; --ink:#e8f0ee; --sub:#9db0ad; --line:#30403e;
+  --accent:#3cb8ab; --accent-ink:#0f1716; --pin:#ffd25c; --pin-ink:#1f2b2a;
+  --done:#5f6f6d; --ok:#4fc283; --soft:#1f3532; --warn:#ef7a5f; color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);line-height:1.6;-webkit-text-size-adjust:100%}
+.wrap{max-width:620px;margin:0 auto;padding-block:14px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.logo{width:42px;height:42px;border-radius:50% 50% 50% 6px;background:var(--pin);color:var(--pin-ink);display:grid;place-items:center;font:800 20px var(--display);flex:none;transform:rotate(-45deg)}
+.logo span{transform:rotate(45deg)}
+h1{font:800 22px var(--display);margin:0;letter-spacing:.03em}
+h2{font:800 18px var(--display);margin:0 0 6px;text-wrap:balance}
+.tag{font-size:13px;color:var(--sub);margin:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;display:grid;gap:12px}
+.stack{display:grid;gap:14px}
+.btn{position:relative;overflow:hidden;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:13px 18px;font:700 16px var(--body);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;text-align:center}
+.btn.main{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.ghost{background:transparent}
+.btn.danger{color:var(--warn);border-color:var(--warn);background:transparent}
+.btn:focus-visible,.pin:focus-visible,input:focus-visible,textarea:focus-visible,.mic:focus-visible{outline:3px solid var(--pin);outline-offset:2px}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.row>.btn{flex:1 1 140px}
+.picker{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:200px}
+.hint{font-size:14px;color:var(--sub);margin:0}
+.badge{display:inline-block;font-size:12px;font-weight:700;padding:1px 8px;border-radius:999px;background:var(--soft);color:var(--accent)}
+
+/* 保存した場所の一覧 */
+.place{display:flex;gap:12px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:10px;cursor:pointer;text-align:left;width:100%;color:var(--ink);font:inherit}
+.place img{width:84px;height:64px;object-fit:cover;border-radius:10px;flex:none;background:var(--soft)}
+.place .meta{min-width:0;flex:1}
+.place b{display:block;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.place small{color:var(--sub);font-size:13px}
+
+/* 写真と番号 */
+.shot{display:grid;gap:8px}
+.shothead{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.shothead input{flex:1;min-width:0;border:0;border-bottom:1px dashed var(--line);background:transparent;color:var(--ink);font:700 15px var(--body);padding:4px 0}
+.frame{position:relative;border-radius:12px;overflow:hidden;touch-action:manipulation;user-select:none;-webkit-user-select:none;background:#000}
+.frame img{display:block;width:100%;height:auto;pointer-events:none}
+.frame.edit{cursor:crosshair}
+.pin{position:absolute;width:36px;height:36px;margin:-36px 0 0 -18px;border:0;padding:0;background:none;cursor:grab;touch-action:none}
+.pin::before{content:"";position:absolute;inset:0;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:var(--pin);border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.45)}
+.pin span{position:relative;display:grid;place-items:center;width:100%;height:100%;font:800 16px var(--display);color:var(--pin-ink)}
+.pin.done::before{background:var(--ok)}
+.pin.done span{color:#fff}
+.pin.hot::before{animation:bob .8s ease-in-out 2}
+@keyframes bob{50%{transform:rotate(-45deg) scale(1.25)}}
+.guide{position:sticky;top:0;z-index:15;background:var(--pin);color:var(--pin-ink);border-radius:14px;padding:12px 14px;font:800 16px var(--display);box-shadow:0 4px 12px rgba(0,0,0,.2);display:flex;gap:8px;align-items:center;justify-content:space-between}
+.guide button{border:0;background:rgba(0,0,0,.12);color:inherit;border-radius:99px;padding:6px 10px;font:700 13px var(--body);cursor:pointer;flex:none}
+.tiny{border:0;background:none;color:var(--warn);font:600 13px var(--body);cursor:pointer;padding:4px}
+
+/* メモ欄 */
+.items{display:grid;gap:8px}
+.item{display:flex;gap:8px;align-items:center}
+.num{width:30px;height:30px;border-radius:50%;background:var(--pin);color:var(--pin-ink);display:grid;place-items:center;font:800 14px var(--display);flex:none}
+.item input{flex:1;min-width:0;border:1px solid var(--line);border-radius:10px;padding:9px 10px;font:16px var(--body);background:var(--bg);color:var(--ink)}
+.mic{width:42px;height:42px;flex:none;border:0;border-radius:12px;background:var(--accent);color:var(--accent-ink);font-size:18px;cursor:pointer}
+.mic.on{background:var(--warn);color:#fff;animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.55}}
+.x{width:32px;height:32px;flex:none;border:0;background:none;color:var(--sub);font-size:20px;cursor:pointer}
+textarea{width:100%;min-height:76px;border:1px solid var(--line);border-radius:12px;padding:10px;font:16px var(--body);background:var(--bg);color:var(--ink);resize:vertical}
+.notewrap{display:flex;gap:8px;align-items:flex-start}
+.notewrap textarea{flex:1;min-width:0}
+.namerow{display:flex;gap:8px}
+.namerow input{flex:1;min-width:0;border:1px solid var(--line);border-radius:12px;padding:12px;font:700 17px var(--body);background:var(--bg);color:var(--ink)}
+#micNote{min-height:1.2em}
+
+/* 出発チェック */
+.check{display:flex;gap:10px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--card);cursor:pointer;font-size:16px}
+.check input{width:24px;height:24px;accent-color:var(--ok);flex:none}
+.check.done{color:var(--done);text-decoration:line-through}
+.check.done .num{background:var(--ok);color:#fff}
+.bar{height:10px;border-radius:999px;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--ok);width:0;transition:width .3s}
+.count{font:800 15px var(--display);font-variant-numeric:tabular-nums}
+
+/* お知らせ・完了 */
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:999px;font-size:14px;z-index:30;max-width:calc(100% - 32px)}
+.pop{position:fixed;inset:0;background:rgba(10,20,19,.55);display:grid;place-items:center;z-index:40;padding:24px max(16px,env(safe-area-inset-right,0px)) 24px max(16px,env(safe-area-inset-left,0px))}
+.popcard{background:var(--card);border-radius:22px;padding:26px 22px;text-align:center;display:grid;gap:12px;max-width:360px;width:100%;animation:popin .35s cubic-bezier(.2,1.4,.4,1)}
+.popcard .big{font:800 26px var(--display);color:var(--ok)}
+@keyframes popin{from{transform:scale(.7);opacity:0}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="logo" aria-hidden="true"><span>置</span></div>
+    <div>
+      <h1>置き場所メモ</h1>
+      <p class="tag">どこに何を置いたか、写真に番号でのこす</p>
+    </div>
+  </header>
+
+  <!-- 一覧 -->
+  <section id="vHome" class="stack">
+    <div class="card">
+      <h2>着いたら、まず部屋を撮る</h2>
+      <p class="hint">ホテル・実家・友だちの家・職場など。荷物を置いた所を写真で押すと番号がつきます。帰るときはチェックリストで忘れ物を確認できます。</p>
+      <div class="namerow">
+        <input id="newName" placeholder="場所の名前（例：〇〇ホテル 302号室）" aria-label="場所の名前">
+        <button class="mic" id="newNameMic" aria-label="声で入力">🎤</button>
+      </div>
+      <div class="row">
+        <label class="btn main">📷 部屋を撮る
+          <input type="file" class="picker" id="newCam" accept="image/*" capture="environment" aria-label="カメラで撮る">
+        </label>
+        <label class="btn">🖼 写真から選ぶ
+          <input type="file" class="picker" id="newFile" accept="image/*" aria-label="写真から選ぶ">
+        </label>
+      </div>
+    </div>
+    <div>
+      <p class="hint" style="margin-bottom:8px">保存した場所</p>
+      <div id="placeList" class="stack" style="gap:10px"></div>
+    </div>
+    <p class="hint">写真とメモはこのスマホ（このブラウザ）の中だけに保存されます。どこにも送りません。</p>
+  </section>
+
+  <!-- 置いた所を記録 -->
+  <section id="vEdit" class="stack" hidden>
+    <div class="row" style="align-items:center">
+      <button class="btn ghost" id="backFromEdit" style="flex:0 0 auto">← 一覧へ</button>
+      <span id="editSample" class="badge" hidden>見本</span>
+    </div>
+    <div class="namerow">
+      <input id="placeName" aria-label="場所の名前">
+      <button class="mic" id="placeNameMic" aria-label="声で入力">🎤</button>
+    </div>
+    <div class="card addcard">
+      <h2>置いた物を登録する</h2>
+      <p class="hint">置いた物の名前を入れて「決定」を押すと、AIが写真から探して番号を付けます（いくつでもOK。例：目薬、コップ、充電器）</p>
+      <div class="namerow">
+        <input id="addNames" placeholder="例：目薬、コップ" aria-label="置いた物の名前">
+        <button class="mic" id="addNamesMic" aria-label="声で入力">🎤</button>
+      </div>
+      <div class="row">
+        <button class="btn main" id="aiFind">✅ 決定（写真に番号を付ける）</button>
+      </div>
+      <div class="row" style="justify-content:center">
+        <button class="tiny" id="tapPlace" style="color:var(--sub);text-decoration:underline">AIを使わず、自分で写真を押して付ける</button>
+      </div>
+      <p id="aiStatus" class="hint" aria-live="polite"></p>
+    </div>
+    <div class="guide" id="guide" hidden></div>
+    <p class="hint">番号は1つの物に1つです。番号は指で動かせます。</p>
+    <div id="shots" class="stack"></div>
+    <div class="row">
+      <label class="btn">📷 写真を追加（洗面所など）
+        <input type="file" class="picker" id="addCam" accept="image/*" capture="environment" aria-label="写真を追加して撮る">
+      </label>
+      <label class="btn">🖼 写真から追加
+        <input type="file" class="picker" id="addFile" accept="image/*" aria-label="写真から追加">
+      </label>
+    </div>
+    <div class="card">
+      <h2>ひとことメモ</h2>
+      <div class="notewrap">
+        <textarea id="placeNote" placeholder="例：金庫の暗証番号は自分の誕生日。チェックアウトは10時。"></textarea>
+        <button class="mic" id="noteMic" aria-label="声でメモ">🎤</button>
+      </div>
+    </div>
+    <p id="micNote" class="hint" aria-live="polite"></p>
+    <button class="btn main" id="goLeave">🚪 部屋を出る（忘れ物チェック）</button>
+    <button class="btn danger" id="delPlace">この場所を消す</button>
+  </section>
+
+  <!-- 出発チェック -->
+  <section id="vLeave" class="stack" hidden>
+    <div class="row" style="align-items:center">
+      <button class="btn ghost" id="backFromLeave" style="flex:0 0 auto">← 記録に戻る</button>
+    </div>
+    <div class="card">
+      <h2 id="leaveTitle"></h2>
+      <div class="row" style="align-items:center;justify-content:space-between">
+        <span class="hint">持った物にチェック</span>
+        <span class="count" id="leaveCount"></span>
+      </div>
+      <div class="bar"><i id="leaveBar"></i></div>
+    </div>
+    <div id="leaveShots" class="stack"></div>
+    <div id="leaveNote" class="card" hidden></div>
+    <button class="btn main" id="leaveDone">✅ 忘れ物なし！部屋を出る</button>
+  </section>
+</div>
+
+<div id="pop" class="pop" hidden>
+  <div class="popcard" role="dialog" aria-modal="true" aria-labelledby="popTitle">
+    <div id="popTitle" class="big"></div>
+    <p id="popText" style="margin:0"></p>
+    <div id="popBtns" class="stack" style="gap:8px"></div>
+  </div>
+</div>
+<div id="toast" class="toast" hidden></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const KEY = "okiwasure-v1";
+let places = [];
+let cur = null;      // 開いている場所
+let mode = "home";
+
+// ===== 保存（このブラウザの中だけ） =====
+function load() {
+  try { const s = localStorage.getItem(KEY); if (s) places = JSON.parse(s); } catch (e) {}
+  if (!places.length) places = [sample()];
+}
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(places)); return true; }
+  catch (e) { toast("保存できる量がいっぱいです。使わない場所を消してください。"); return false; }
+}
+const uid = () => Math.random().toString(36).slice(2, 9);
+
+// ===== 見本の部屋（絵で描く） =====
+function sampleImage() {
+  const c = document.createElement("canvas"); c.width = 900; c.height = 640;
+  const g = c.getContext("2d");
+  g.fillStyle = "#e9e1d3"; g.fillRect(0, 0, 900, 420);           // 壁
+  g.fillStyle = "#b99a76"; g.fillRect(0, 420, 900, 220);          // 床
+  g.fillStyle = "#a9c9dd"; g.fillRect(560, 70, 240, 170);         // 窓
+  g.strokeStyle = "#fff"; g.lineWidth = 10; g.strokeRect(560, 70, 240, 170);
+  g.beginPath(); g.moveTo(680, 70); g.lineTo(680, 240); g.stroke();
+  g.fillStyle = "#d9cdb8"; g.fillRect(30, 60, 170, 420);          // クローゼット
+  g.strokeStyle = "#b8a88e"; g.lineWidth = 4; g.strokeRect(30, 60, 170, 420);
+  g.beginPath(); g.moveTo(115, 60); g.lineTo(115, 480); g.stroke();
+  g.fillStyle = "#8a7558"; g.fillRect(100, 250, 6, 40); g.fillRect(124, 250, 6, 40);
+  g.fillStyle = "#f7f4ee"; g.fillRect(250, 360, 330, 190);        // ベッド
+  g.fillStyle = "#7d93a8"; g.fillRect(250, 430, 330, 120);
+  g.fillStyle = "#ffffff"; g.fillRect(270, 375, 120, 50); g.fillRect(420, 375, 120, 50);
+  g.fillStyle = "#8b6b4a"; g.fillRect(250, 330, 330, 30);
+  g.fillStyle = "#9b7b58"; g.fillRect(600, 420, 90, 90);          // ナイトテーブル
+  g.fillStyle = "#f2d27a"; g.beginPath(); g.arc(645, 395, 22, 0, 7); g.fill();
+  g.fillStyle = "#6f5a42"; g.fillRect(640, 405, 10, 18);
+  g.fillStyle = "#7a5f43"; g.fillRect(710, 330, 170, 22);         // 机
+  g.fillRect(720, 352, 12, 150); g.fillRect(858, 352, 12, 150);
+  g.fillStyle = "#333"; g.fillRect(760, 290, 70, 42);             // テレビ
+  g.fillStyle = "#fff"; g.fillRect(860, 380, 26, 36);             // コンセント
+  g.fillStyle = "#999"; g.fillRect(866, 390, 4, 10); g.fillRect(876, 390, 4, 10);
+  g.fillStyle = "#3d3d3d"; g.fillRect(470, 545, 120, 70);         // スーツケース
+  g.fillStyle = "#555"; g.fillRect(515, 530, 30, 16);
+  return c.toDataURL("image/jpeg", 0.8);
+}
+function sample() {
+  const sid = uid();
+  return {
+    id: uid(), sample: true, name: "見本：駅前ホテル 302号室", note: "チェックアウトは10時。カードキーはフロントへ。",
+    created: Date.now(),
+    shots: [{ id: sid, label: "部屋", img: sampleImage() }],
+    items: [
+      { id: uid(), shot: sid, x: 93, y: 62, text: "スマホの充電器（机の横のコンセント）", done: false },
+      { id: uid(), shot: sid, x: 71.5, y: 66, text: "腕時計（ベッド横の台）", done: false },
+      { id: uid(), shot: sid, x: 12.8, y: 40, text: "上着（クローゼットの中）", done: false },
+      { id: uid(), shot: sid, x: 58, y: 85, text: "スーツケースの鍵（ベッドの足もと）", done: false }
+    ]
+  };
+}
+
+// ===== 写真を小さくして読み込む =====
+function readPhoto(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const im = new Image();
+    im.onload = () => {
+      const max = 1100, s = Math.min(1, max / Math.max(im.width, im.height));
+      const c = document.createElement("canvas");
+      c.width = Math.round(im.width * s); c.height = Math.round(im.height * s);
+      c.getContext("2d").drawImage(im, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      resolve(c.toDataURL("image/jpeg", 0.72));
+    };
+    im.onerror = () => { URL.revokeObjectURL(url); reject(); };
+    im.src = url;
+  });
+}
+
+// ===== 画面の切り替え =====
+function show(m) {
+  mode = m;
+  $("vHome").hidden = m !== "home"; $("vEdit").hidden = m !== "edit"; $("vLeave").hidden = m !== "leave";
+  if (m === "home") renderHome();
+  if (m === "edit") renderEdit();
+  if (m === "leave") renderLeave();
+  window.scrollTo(0, 0);
+}
+
+function renderHome() {
+  const box = $("placeList"); box.innerHTML = "";
+  if (!places.length) { box.innerHTML = '<p class="hint">まだありません。上のボタンで部屋を撮ってください。</p>'; return; }
+  places.forEach(p => {
+    const b = document.createElement("button"); b.className = "place";
+    const left = p.items.filter(i => !i.done).length;
+    b.innerHTML = `<img alt=""><div class="meta"><b></b><small></small></div>`;
+    b.querySelector("img").src = p.shots[0]?.img || "";
+    b.querySelector("b").textContent = p.name || "名前なし";
+    b.querySelector("small").textContent = `置いた物 ${p.items.length}こ` + (p.items.length ? `・まだ持っていない ${left}こ` : "") + "　" + new Date(p.created).toLocaleDateString("ja-JP");
+    b.onclick = () => { cur = p; queue = []; show("edit"); };
+    box.appendChild(b);
+  });
+}
+
+// 番号は場所全体で 1, 2, 3… と通し番号
+const numOf = it => cur.items.indexOf(it) + 1;
+
+// ===== 置いた物を1つずつ登録（名前 → 写真で場所を押す） =====
+let queue = [];
+const splitNames = v => v.split(/[、,，。\n]+|\s+/).map(w => w.trim()).filter(Boolean);
+function showGuide() {
+  const g = $("guide");
+  if (!queue.length) { g.hidden = true; return; }
+  g.hidden = false;
+  g.innerHTML = `<span></span><button>やめる</button>`;
+  g.querySelector("span").textContent = `👆 ${cur.items.length + 1}番「${queue[0]}」を置いた場所を、写真の上で押してください` + (queue.length > 1 ? `（あと${queue.length - 1}こ）` : "");
+  g.querySelector("button").onclick = () => { queue = []; showGuide(); };
+}
+$("tapPlace").onclick = () => {
+  const names = splitNames($("addNames").value);
+  if (!names.length) { toast("先に、置いた物の名前を入れてください"); $("addNames").focus(); return; }
+  queue = names; $("addNames").value = ""; showGuide();
+  $("guide").scrollIntoView({ behavior: "smooth", block: "start" });
+};
+$("addNamesMic").onclick = e => listen(e.currentTarget, $("addNames"));
+
+// AIに写真から探してもらう（片付けナビ本体のAIを使う）
+function startTap(names, msg) {
+  queue = names; showGuide();
+  if (msg) $("aiStatus").textContent = msg;
+  $("guide").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+$("addNames").addEventListener("keydown", e => { if (e.key === "Enter") $("aiFind").click(); });
+$("aiFind").onclick = async () => {
+  const names = splitNames($("addNames").value);
+  if (!names.length) { toast("先に、置いた物の名前を入れてください"); $("addNames").focus(); return; }
+  if (!cur.shots.length) { toast("写真がありません"); return; }
+  $("addNames").value = "";
+  const finder = parent && parent !== window && parent.findPlacedItems;
+  if (!finder) return startTap(names, "この画面ではAIが使えないので、写真の上で1つずつ押してください。");
+  const btn = $("aiFind"); btn.disabled = true;
+  $("aiStatus").textContent = "AIが写真から探しています…（30秒〜1分ほど）";
+  const shots = cur.shots.slice(0, 3);
+  try {
+    const res = await finder(names, shots.map(sh => sh.img));
+    if (res.error) return startTap(names, res.error + "写真の上で1つずつ押してください。");
+    const list = res.list, miss = [];
+    names.forEach(n => {
+      const f = list.find(r => r && r.name === n && r.found && shots[r.shot | 0]);
+      if (!f) { miss.push(n); return; }
+      const sh = shots[f.shot | 0];
+      cur.items.push({ id: uid(), shot: sh.id, x: Math.max(2, Math.min(98, +f.x || 50)), y: Math.max(3, Math.min(100, +f.y || 50)), text: f.where ? `${n}（${f.where}）` : n, done: false });
+    });
+    save(); renderEdit();
+    $("aiStatus").textContent = `${names.length - miss.length}こ見つけて番号を付けました。ずれていたら番号を指で動かしてください。`;
+    if (miss.length) startTap(miss, $("aiStatus").textContent + `見つからなかった物（${miss.join("、")}）は、写真の上で押してください。`);
+  } catch (e) {
+    startTap(names, "AIでうまく探せませんでした。写真の上で1つずつ押してください。");
+  } finally { btn.disabled = false; }
+};
+
+function renderEdit() {
+  showGuide();
+  $("editSample").hidden = !cur.sample;
+  $("placeName").value = cur.name;
+  $("placeNote").value = cur.note || "";
+  const box = $("shots"); box.innerHTML = "";
+  cur.shots.forEach(sh => {
+    const card = document.createElement("div"); card.className = "card shot";
+    card.innerHTML = `<div class="shothead"><input aria-label="写真の名前"><button class="tiny">写真を消す</button></div>
+      <div class="frame edit"><img alt="撮った部屋の写真"></div><div class="items"></div>`;
+    const lab = card.querySelector("input"); lab.value = sh.label;
+    lab.oninput = () => { sh.label = lab.value; save(); };
+    card.querySelector(".tiny").onclick = () => askDelShot(sh);
+    const fr = card.querySelector(".frame"); fr.querySelector("img").src = sh.img;
+    fr.addEventListener("click", e => {
+      if (e.target !== fr) return;
+      const r = fr.getBoundingClientRect();
+      const name = queue.shift() || "";
+      const it = { id: uid(), shot: sh.id, x: (e.clientX - r.left) / r.width * 100, y: (e.clientY - r.top) / r.height * 100, text: name, done: false };
+      cur.items.push(it); save(); renderEdit();
+      if (name) { toast(`${numOf(it)}番「${name}」をつけました`); return; }
+      const inp = document.querySelector(`[data-item="${it.id}"]`);
+      if (inp) { inp.focus(); toast(`${numOf(it)}番をつけました。何を置いたか書くか🎤で話してください`); }
+    });
+    const list = card.querySelector(".items");
+    cur.items.filter(i => i.shot === sh.id).forEach(it => {
+      fr.appendChild(makePin(it, fr, true));
+      const row = document.createElement("div"); row.className = "item";
+      row.innerHTML = `<span class="num"></span><input placeholder="何を置いた？（例：充電器）"><button class="mic" aria-label="声で入力">🎤</button><button class="x" aria-label="この番号を消す">×</button>`;
+      row.querySelector(".num").textContent = numOf(it);
+      const inp = row.querySelector("input"); inp.value = it.text; inp.dataset.item = it.id;
+      inp.oninput = () => { it.text = inp.value; save(); };
+      row.querySelector(".mic").onclick = e => listen(e.currentTarget, inp, () => { it.text = inp.value; save(); });
+      row.querySelector(".x").onclick = () => { cur.items = cur.items.filter(i => i !== it); save(); renderEdit(); };
+      list.appendChild(row);
+    });
+    if (!list.children.length) list.innerHTML = '<p class="hint">まだ番号がありません。写真を押してください。</p>';
+    box.appendChild(card);
+  });
+  if (!cur.shots.length) box.innerHTML = '<p class="hint">写真がありません。下のボタンで追加してください。</p>';
+}
+
+// 番号の札。記録画面では指で動かせ、出発画面では押すとチェック
+function makePin(it, fr, editable) {
+  const p = document.createElement("button"); p.className = "pin" + (it.done && !editable ? " done" : "");
+  p.style.left = it.x + "%"; p.style.top = it.y + "%";
+  p.innerHTML = `<span>${numOf(it)}</span>`;
+  p.setAttribute("aria-label", `${numOf(it)}番 ${it.text || ""}`);
+  if (!editable) { p.onclick = () => toggle(it); return p; }
+  let start = null, moved = false;
+  p.addEventListener("pointerdown", e => { start = { x: e.clientX, y: e.clientY }; moved = false; p.setPointerCapture(e.pointerId); e.preventDefault(); });
+  p.addEventListener("pointermove", e => {
+    if (!start) return;
+    if (Math.hypot(e.clientX - start.x, e.clientY - start.y) > 6) moved = true;
+    if (!moved) return;
+    const r = fr.getBoundingClientRect();
+    it.x = Math.max(4, Math.min(96, (e.clientX - r.left) / r.width * 100));
+    it.y = Math.max(3, Math.min(100, (e.clientY - r.top) / r.height * 100));
+    p.style.left = it.x + "%"; p.style.top = it.y + "%";
+  });
+  p.addEventListener("pointerup", () => {
+    if (!start) return; start = null;
+    if (moved) save(); else { const inp = document.querySelector(`[data-item="${it.id}"]`); inp && inp.focus(); }
+  });
+  p.addEventListener("click", e => e.stopPropagation());
+  return p;
+}
+
+function askDelShot(sh) {
+  const n = cur.items.filter(i => i.shot === sh.id).length;
+  popup("写真を消しますか？", n ? `この写真の番号 ${n}こ も一緒に消えます。` : "この写真を消します。", [
+    ["消す", "danger", () => { cur.shots = cur.shots.filter(s => s !== sh); cur.items = cur.items.filter(i => i.shot !== sh.id); save(); renderEdit(); }],
+    ["やめる", "", null]
+  ]);
+}
+
+// ===== 出発チェック =====
+function renderLeave() {
+  $("leaveTitle").textContent = cur.name || "この部屋";
+  const box = $("leaveShots"); box.innerHTML = "";
+  cur.shots.forEach(sh => {
+    const its = cur.items.filter(i => i.shot === sh.id);
+    const card = document.createElement("div"); card.className = "card shot";
+    card.innerHTML = `<b></b><div class="frame"><img alt="撮った部屋の写真"></div><div class="items"></div>`;
+    card.querySelector("b").textContent = sh.label;
+    const fr = card.querySelector(".frame"); fr.querySelector("img").src = sh.img;
+    const list = card.querySelector(".items");
+    its.forEach(it => {
+      fr.appendChild(makePin(it, fr, false));
+      const lab = document.createElement("label"); lab.className = "check" + (it.done ? " done" : "");
+      lab.innerHTML = `<input type="checkbox"><span class="num"></span><span></span>`;
+      lab.querySelector("input").checked = it.done;
+      lab.querySelector("input").onchange = () => toggle(it);
+      lab.querySelector(".num").textContent = numOf(it);
+      lab.lastElementChild.textContent = it.text || "（名前なし）";
+      list.appendChild(lab);
+    });
+    if (!its.length) list.innerHTML = '<p class="hint">この写真には番号がありません。</p>';
+    box.appendChild(card);
+  });
+  const note = $("leaveNote");
+  note.hidden = !cur.note; note.innerHTML = '<h2>メモ</h2><p style="margin:0;white-space:pre-wrap"></p>';
+  note.querySelector("p").textContent = cur.note || "";
+  updateCount();
+}
+function toggle(it) {
+  it.done = !it.done; save(); renderLeave();
+  if (cur.items.length && cur.items.every(i => i.done)) setTimeout(() => toast("全部チェックできました。下のボタンで部屋を出ましょう"), 50);
+}
+function updateCount() {
+  const n = cur.items.length, d = cur.items.filter(i => i.done).length;
+  $("leaveCount").textContent = `${d} / ${n}`;
+  $("leaveBar").style.width = n ? (d / n * 100) + "%" : "0";
+}
+$("leaveDone").onclick = () => {
+  const left = cur.items.filter(i => !i.done);
+  if (left.length) {
+    // まだの物をはねさせて知らせる
+    document.querySelectorAll("#leaveShots .pin:not(.done)").forEach(p => { p.classList.remove("hot"); void p.offsetWidth; p.classList.add("hot"); });
+    popup("ちょっと待って！", `まだチェックしていない物があります：${left.map(i => `${numOf(i)}番 ${i.text || ""}`).join("、")}`, [
+      ["もう一度見る", "main", null],
+      ["それでも部屋を出る", "", finish]
+    ]);
+  } else finish();
+};
+function finish() {
+  popup("忘れ物なし！", "おつかれさまでした。いってらっしゃい。", [
+    ["この場所の記録を消す", "danger", () => { places = places.filter(p => p !== cur); save(); cur = null; show("home"); }],
+    ["記録を残して最初に戻る", "main", () => { cur.items.forEach(i => i.done = false); save(); cur = null; show("home"); }]
+  ]);
+}
+
+// ===== ポップアップ・お知らせ =====
+function popup(title, text, btns) {
+  $("popTitle").textContent = title; $("popText").textContent = text;
+  const box = $("popBtns"); box.innerHTML = "";
+  btns.forEach(([label, cls, fn]) => {
+    const b = document.createElement("button"); b.className = "btn " + cls; b.textContent = label;
+    b.onclick = () => { $("pop").hidden = true; fn && fn(); };
+    box.appendChild(b);
+  });
+  $("pop").hidden = false; box.firstChild.focus();
+}
+let tt;
+function toast(msg) { const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(tt); tt = setTimeout(() => t.hidden = true, 3200); }
+
+// ===== 声で入力（端末の音声認識） =====
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec = null, recBtn = null;
+function listen(btn, input, after) {
+  if (rec) { rec.stop(); return; }
+  const fallback = msg => { btn.classList.remove("on"); $("micNote").textContent = msg || "この画面では声の入力が使えません。入力欄を押して、キーボードのマイクボタン🎤で話してください。"; if (mode === "home") toast($("micNote").textContent); input.focus(); };
+  if (!SR) return fallback();
+  try {
+    rec = new SR(); recBtn = btn;
+    rec.lang = "ja-JP"; rec.interimResults = false; rec.continuous = false;
+    rec.onresult = e => {
+      const t = [...e.results].map(r => r[0].transcript).join("");
+      const sep = input.tagName === "TEXTAREA" ? "\n" : "、";
+      input.value = (input.value.trim() ? input.value.trim() + sep : "") + t;
+      after && after();
+      $("micNote").textContent = "聞き取りました。ちがっていたら文字で直せます。";
+    };
+    rec.onerror = e => { rec = null; fallback(e.error === "no-speech" ? "声が聞き取れませんでした。もう一度🎤を押して話してください。" : null); };
+    rec.onend = () => { rec = null; btn.classList.remove("on"); };
+    rec.start(); btn.classList.add("on");
+    $("micNote").textContent = "聞いています…（例：充電器、机の横のコンセント）";
+  } catch (e) { rec = null; fallback(); }
+}
+
+// ===== ボタン =====
+async function newPlace(file) {
+  if (!file) return;
+  try {
+    const img = await readPhoto(file);
+    const sid = uid();
+    const p = { id: uid(), name: $("newName").value.trim() || `${new Date().toLocaleDateString("ja-JP")} の部屋`, note: "", created: Date.now(), shots: [{ id: sid, label: "部屋", img }], items: [] };
+    places.unshift(p); $("newName").value = "";
+    if (!save()) { places.shift(); return; }
+    cur = p; queue = []; show("edit"); toast("置いた物の名前を入れてください"); $("addNames").focus();
+  } catch (e) { toast("写真を読み込めませんでした。別の写真で試してください。"); }
+}
+async function addShot(file) {
+  if (!file) return;
+  try {
+    const img = await readPhoto(file);
+    cur.shots.push({ id: uid(), label: `写真${cur.shots.length + 1}`, img });
+    if (!save()) { cur.shots.pop(); return; }
+    renderEdit(); toast("写真を追加しました。名前（例：洗面所）を変えられます");
+  } catch (e) { toast("写真を読み込めませんでした。"); }
+}
+$("newCam").onchange = e => { newPlace(e.target.files[0]); e.target.value = ""; };
+$("newFile").onchange = e => { newPlace(e.target.files[0]); e.target.value = ""; };
+$("addCam").onchange = e => { addShot(e.target.files[0]); e.target.value = ""; };
+$("addFile").onchange = e => { addShot(e.target.files[0]); e.target.value = ""; };
+$("newNameMic").onclick = e => listen(e.currentTarget, $("newName"));
+$("placeNameMic").onclick = e => listen(e.currentTarget, $("placeName"), () => { cur.name = $("placeName").value; save(); });
+$("noteMic").onclick = e => listen(e.currentTarget, $("placeNote"), () => { cur.note = $("placeNote").value; save(); });
+$("placeName").oninput = () => { cur.name = $("placeName").value; save(); };
+$("placeNote").oninput = () => { cur.note = $("placeNote").value; save(); };
+$("backFromEdit").onclick = () => { cur = null; show("home"); };
+$("backFromLeave").onclick = () => show("edit");
+$("goLeave").onclick = () => {
+  if (!cur.items.length) { toast("まだ番号がありません。写真を押して置いた物を記録してください"); return; }
+  show("leave");
+};
+$("delPlace").onclick = () => popup("この場所を消しますか？", "写真とメモがすべて消えます。元に戻せません。", [
+  ["消す", "danger", () => { places = places.filter(p => p !== cur); save(); cur = null; show("home"); }],
+  ["やめる", "", null]
+]);
+
+load(); show("home");
+</script>
+
+</template>
+
+<!-- AIの設定（Geminiの鍵） -->
+<div class="wrap hidden" id="vKey">
+  <div class="topbar"><button class="back" id="keyBack">← もどる</button></div>
+  <div class="card keybox">
+    <h2 style="font-size:20px;margin:0">🔑 AIの設定</h2>
+    <p style="margin:0">片付けナビのAIは、Googleの<b>Gemini</b>を使います。使う人ごとに、Googleから無料でもらえる「鍵」（APIキー）が必要です。最初に1回だけ設定すれば、あとはそのまま使えます。</p>
+    <div class="keystate" id="keyState"></div>
+  </div>
+
+  <div class="card keybox">
+    <h3 style="margin:0">鍵のもらい方（3分ほど）</h3>
+    <ol>
+      <li>下のボタンでGoogle AI Studioを開き、ふだん使っているGoogleアカウントでログインします。</li>
+      <li>はじめての人は、利用規約に同意すると鍵が自動で1つ作られます。表示されない時は「APIキーを作成」（Create API key）を押します。</li>
+      <li>鍵の横のコピーボタンを押してコピーします。</li>
+      <li>この画面に戻り、下の欄に貼り付けて「保存して試す」を押します。</li>
+    </ol>
+    <a class="biglink" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio を開く ↗</a>
+  </div>
+
+  <div class="card keybox">
+    <label for="keyInput"><b>鍵を貼り付ける</b></label>
+    <div class="vrow">
+      <input id="keyInput" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="ここに貼り付け">
+      <button class="eye" id="keyEye" type="button">表示</button>
+    </div>
+    <button class="btn main" id="keySave">保存して試す</button>
+    <button class="btn ghost hidden" id="keyDel">この端末から鍵を消す</button>
+    <div class="status" id="keyMsg"></div>
+  </div>
+
+  <div class="card keybox">
+    <h3 style="margin:0">料金と写真の扱い</h3>
+    <table class="keytbl">
+      <tr><th></th><th>無料のまま</th><th>支払い設定をした場合</th></tr>
+      <tr><td>料金</td><td>0円</td><td>1回あたり数円ほど（Googleから請求）</td></tr>
+      <tr><td>回数</td><td>1日の回数に上限あり</td><td>たくさん使える</td></tr>
+      <tr><td>送った写真</td><td>GoogleのAIの改善に使われることがあります</td><td>改善には使われません</td></tr>
+    </table>
+    <p class="gnote">見られたくない物が写る時は、「守る物」を囲んで<b>モザイクにしてから送る</b>（はじめからオン）を使ってください。気になる人は、Google AI Studio で支払い設定をすると、写真が改善に使われなくなります。片付けナビの運営者には、写真も料金も届きません。</p>
+  </div>
+
+  <div class="card keybox">
+    <h3 style="margin:0">鍵の扱いについて</h3>
+    <ul style="margin:0;padding-left:20px;font-size:14px;display:grid;gap:4px">
+      <li>鍵はこの端末の中にだけ保存し、Google（Gemini）以外には送りません。</li>
+      <li>鍵は暗証番号と同じです。人に見せたり、画面の写真を載せたりしないでください。</li>
+      <li>もれたかもと思ったら、Google AI Studio で鍵を削除して作り直してください。古い鍵はすぐ使えなくなります。</li>
+      <li>支払い設定をした人は、Google側で予算の上限通知を設定しておくと安心です。</li>
+    </ul>
+  </div>
+</div>
+
+<div class="wrap hidden" id="vHome">
+  <div class="topbar"><button class="back" id="homeBack">← もどる</button></div>
+  <header>
+    <div class="logo">片</div>
+    <div>
+      <h1>片付けナビ</h1>
+      <p class="tag">部屋の写真から、片付ける順番と方法を教えます</p>
+    </div>
+  </header>
+
+  <!-- 1. 写真を選ぶ -->
+  <section class="card" id="pick">
+    <div id="roomBox">
+      <b style="font-size:15px">どの部屋を片付けますか？</b><span class="note">（選ばなくてもOK）</span>
+      <div class="rooms" id="rooms">
+        <button data-room="寝室">🛏️ 寝室</button><button data-room="リビング">🛋️ リビング</button><button data-room="台所">🍳 台所</button><button data-room="風呂場">🛁 風呂場</button>
+      </div>
+    </div>
+    <div id="dropLabel">
+      <div class="pickbtn main">
+        <input type="file" class="picker" id="cam" accept="image/*" capture="environment" aria-label="カメラで撮る">
+        📷 カメラで撮る
+      </div>
+      <div class="pickbtn">
+        <input type="file" class="picker" id="file" accept="image/*" aria-label="写真から選ぶ">
+        🖼️ 写真から選ぶ
+      </div>
+      <p class="note" style="text-align:center">散らかった部屋全体が写るように撮ってください。</p>
+      <div class="paste-help" id="pasteHelp">
+        <div class="pickhint hidden" id="pickHint">この画面ではカメラ・写真のボタンが使えないようです。下の「貼り付け」で写真を入れてください。</div>
+        <b>ボタンが反応しないとき</b>
+        <ol>
+          <li>写真アプリで部屋の写真を開き、共有ボタンから「コピー」を押す</li>
+          <li>下の枠を長押しして「ペースト（貼り付け）」を押す</li>
+        </ol>
+        <button class="btn main" id="pasteBtn" style="margin-bottom:8px">📋 コピーした写真を貼り付ける</button>
+        <div class="pastebox" id="pastebox" contenteditable="true" inputmode="none" aria-label="ここに写真を貼り付け">ここを長押しして貼り付け</div>
+        <p class="note">それでもダメなときは、このリンクをSafariやChromeで開いてください。</p>
+      </div>
+    </div>
+    <div id="previewBox" class="hidden" style="margin-top:12px">
+      <div class="photo" id="photo">
+        <img id="img" alt="読み込んだ部屋の写真">
+        <svg id="overlay" preserveAspectRatio="none"></svg>
+      </div>
+      <div class="protect" id="protectPanel">
+        <div class="protect-head"><b>🛡️ 捨てたくない物を守る</b><span class="note">（なしでもOK）</span></div>
+        <p class="note" style="margin:4px 0 0">守る物には手をつけず、先に別の場所へ移す順番にします。やり方は2つ。どちらか片方だけでもOKです。</p>
+        <div class="way"><b>🎤 声や文字で伝える</b>
+          <p class="note" style="margin:2px 0 6px">「マウス、マウスパッド、カップ、ハガキ」のように言うと、AIが写真から探して守ります。</p>
+          <div class="vrow">
+            <input id="keepWords" placeholder="例：マウス、マウスパッド、カップ" maxlength="200">
+            <button class="mic" id="micBtn" aria-label="声で入力">🎤</button>
+          </div>
+          <p class="note" id="micNote" style="margin-top:4px">※ この方法では、名前の物をAIが探すため、その物にはモザイクがかかりません。</p>
+        </div>
+        <div class="way"><b>✋ 指でなぞって囲む</b>
+          <p class="note" style="margin:2px 0 0">「囲む」を押してから、守る物のまわりを指でぐるっとなぞります。棚や箱ごと囲んでもOKです。</p>
+          <button class="btn mark" id="markBtn">✋ 囲む</button>
+          <div id="marks"></div>
+        </div>
+        <label class="opt"><input type="checkbox" id="optBlur" checked><span>囲んだ所をモザイクにしてからAIに送る（趣味の物をAIに見せない）</span></label>
+        <label class="opt"><input type="checkbox" id="optOneRoom"><span>ほかに部屋がない（ワンルームなど）→「守る物の箱」に入れる形にする</span></label>
+      </div>
+      <div class="row" id="actions">
+        <div class="pickbtn small" id="againWrap">
+          <input type="file" class="picker" id="again" accept="image/*" aria-label="撮り直す">
+          撮り直す
+        </div>
+        <button class="btn main" id="go">順番を教えて！</button>
+      </div>
+      <div class="status" id="status"></div>
+      <div class="err hidden" id="err"></div>
+    </div>
+    <p class="note hidden" id="unavail"></p>
+  </section>
+
+  <!-- 2. 結果 -->
+  <section id="result" class="hidden">
+    <div class="card">
+      <div class="summary" id="summary"></div>
+      <div class="progress"><i id="bar"></i></div>
+      <div class="status" id="doneText" style="margin-top:6px"></div>
+      <div class="seen hidden" id="seen"></div>
+      <div class="cheer hidden" id="cheer">全部できました！下の「片付け完了」を押してください</div>
+    </div>
+    <div class="card">
+      <h2>片付ける順番</h2>
+      <p class="note" style="margin-top:-6px">写真の番号をタップすると、その場所が光ります。番号の順に片付けるだけでOKです</p>
+      <div class="keepbox">
+        <b>🛡️ あとから残す物を追加</b>
+        <p class="note" style="margin:2px 0 6px">ハガキなど、片付けの途中で「これは残したい」と思った物を追加できます。順番の中の物を残すときは、各番号の「🛡️ 残す」を押してください。</p>
+        <div class="vrow">
+          <input id="laterWords" placeholder="例：ハガキ" maxlength="60">
+          <button class="mic" id="laterMic" aria-label="声で入力">🎤</button>
+          <button class="addbtn" id="laterAdd">追加</button>
+        </div>
+        <p class="note hidden" id="laterNote" style="margin-top:4px"></p>
+        <div class="keepchips" id="laterList"></div>
+      </div>
+      <div id="steps"></div>
+      <button class="btn finish hidden" id="finishBtn">🎉 片付け完了！</button>
+    </div>
+    <div class="card hidden" id="decCard">
+      <h2>手放すか迷う物</h2>
+      <p class="note" style="margin-top:-6px">AIは候補を出すだけです。決めるのはあなたです。迷ったら「保留」でOK。</p>
+      <div id="decs"></div>
+    </div>
+    <div class="card">
+      <h2>あると楽になる道具</h2>
+      <div id="tools"></div>
+      <p class="note">商品名は一例です。お手持ちの物で代用できます。</p>
+    </div>
+    <div class="card" id="tipsCard">
+      <h2>続けるコツ</h2>
+      <ul class="tips" id="tips"></ul>
+    </div>
+  </section>
+</div>
+
+<div class="pop hidden" id="pop" role="dialog" aria-label="お疲れさまでした">
+  <div class="pop-card">
+    <div class="pop-confetti" aria-hidden="true">🎉✨🧹✨🎉</div>
+    <div class="pop-title">お疲れさまでした！</div>
+    <p class="pop-text" id="popText">お部屋がすっきりしましたね。</p>
+    <button class="btn main" id="popBack">最初に戻る</button>
+  </div>
+</div>
+
+<div class="pop hidden" id="dlg" role="dialog">
+  <div class="pop-card">
+    <div class="pop-title" id="dlgTitle" style="font-size:22px"></div>
+    <p class="pop-text" id="dlgText"></p>
+    <div class="stackb" id="dlgBtns"></div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let blob = null, plan = null, active = 0;
+let protects = [], markMode = false, dragging = null, keepFound = [];
+let room = "", laterKeeps = [];
+const kept = new Set();
+const choice = {};
+const done = new Set();
+
+// ===== Gemini（使う人の鍵で、端末から直接Googleに送る） =====
+const GEM = {
+  KEY: "katazuke-gemini-key",
+  MODELS: ["gemini-3.8-flash", "gemini-3.6-flash"],
+  get() { try { return localStorage.getItem(this.KEY) || ""; } catch (e) { return ""; } },
+  set(k) { try { k ? localStorage.setItem(this.KEY, k) : localStorage.removeItem(this.KEY); return true; } catch (e) { return false; } },
+};
+async function shrink(b) {
+  // 大きな写真は長い辺1600pxに縮めて送る（速く・安くするため）
+  try {
+    const bmp = await createImageBitmap(b);
+    const s = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+    if (s >= 1 && b.size < 3e6) return b;
+    const c = document.createElement("canvas");
+    c.width = Math.round(bmp.width * s); c.height = Math.round(bmp.height * s);
+    c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+    return await new Promise(r => c.toBlob(x => r(x || b), "image/jpeg", 0.85));
+  } catch (e) { return b; }
+}
+const b64 = b => new Promise((ok, ng) => {
+  const r = new FileReader();
+  r.onload = () => ok(String(r.result).split(",")[1]);
+  r.onerror = () => ng(r.error);
+  r.readAsDataURL(b);
+});
+async function geminiCall(body) {
+  const key = GEM.get();
+  if (!key) throw { code: "no_key" };
+  let last = null;
+  for (const m of GEM.MODELS) {
+    let res;
+    try {
+      res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+        body: JSON.stringify(body),
+      });
+    } catch (e) { throw { code: "offline" }; }
+    if (res.ok) return res.json();
+    const t = await res.text().catch(() => "");
+    if (res.status === 404) { last = { code: "model" }; continue; }
+    if (res.status === 429) throw { code: "rate_limited" };
+    if (/API_KEY_INVALID|API key not valid|invalid api key/i.test(t)) throw { code: "bad_key" };
+    if (res.status === 401 || res.status === 403) throw { code: "key_denied" };
+    if (res.status === 400) throw { code: "image_rejected" };
+    throw { code: "busy" };
+  }
+  throw last || { code: "busy" };
+}
+const gemini = {
+  async json(prompt, opts = {}) {
+    const imgs = opts.images ? [].concat(opts.images) : [];
+    const parts = [{ text: prompt }];
+    for (const im of imgs) {
+      const s = await shrink(im);
+      parts.push({ inline_data: { mime_type: s.type || "image/jpeg", data: await b64(s) } });
+    }
+    const data = await geminiCall({ contents: [{ role: "user", parts }], generationConfig: { responseMimeType: "application/json" } });
+    const c = data.candidates && data.candidates[0];
+    if (!c || !c.content) throw { code: "refused" };
+    const txt = (c.content.parts || []).map(p => p.text || "").join("");
+    try { return JSON.parse(txt); }
+    catch (e) {
+      const m = txt.match(/[\[{][\s\S]*[\]}]/);
+      if (m) { try { return JSON.parse(m[0]); } catch (e2) {} }
+      throw { code: "invalid_json" };
+    }
+  },
+  async test() {
+    const d = await geminiCall({ contents: [{ role: "user", parts: [{ text: "「OK」とだけ返してください。" }] }] });
+    return !!(d.candidates && d.candidates.length);
+  },
+};
+
+const ERR = {
+  no_key: "AIの鍵がまだ設定されていません。「🔑 AIの設定」から設定してください。",
+  bad_key: "鍵が正しくないようです。「🔑 AIの設定」でもう一度コピーして貼り付けてください。",
+  key_denied: "この鍵ではGeminiを使えませんでした。Google AI Studio で新しい鍵を作って貼り付けてください。",
+  offline: "インターネットにつながっていないようです。電波の良い所でもう一度お試しください。",
+  model: "AIの準備ができませんでした。少し時間をおいてお試しください。",
+  busy: "AIが混み合っています。少し待ってからもう一度お試しください。",
+  rate_limited: "今日の無料の回数を使い切ったか、混み合っています。少し待つか、明日もう一度お試しください。",
+  image_rejected: "この写真は読み込めませんでした。別の写真でお試しください。",
+  invalid_json: "うまく読み取れませんでした。もう一度押してください。",
+  refused: "この写真では案内できませんでした。別の写真でお試しください。",
+};
+const sample = gemini;
+
+async function onPick(e) {
+  const f = e.target.files[0];
+  if (!f) return;
+  await useFile(f);
+  e.target.value = "";
+}
+
+// 写真の貼り付け（ボタンが動かない画面向け）とドラッグ＆ドロップ
+const pb = $("pastebox");
+pb.addEventListener("paste", e => {
+  e.preventDefault();
+  const items = [...(e.clipboardData?.items || [])];
+  const it = items.find(i => i.type.startsWith("image/"));
+  pb.textContent = "ここを長押しして貼り付け";
+  if (it) useFile(it.getAsFile());
+  else pb.textContent = "写真が見つかりませんでした。写真を「コピー」してからもう一度どうぞ";
+});
+pb.addEventListener("input", () => {
+  const im = pb.querySelector("img");
+  if (im && im.src) fetch(im.src).then(r => r.blob()).then(useFile).catch(() => {});
+  pb.textContent = "ここを長押しして貼り付け";
+});
+document.addEventListener("dragover", e => e.preventDefault());
+document.addEventListener("drop", e => {
+  e.preventDefault();
+  const f = [...(e.dataTransfer?.files || [])].find(f => f.type.startsWith("image/"));
+  if (f) useFile(f);
+});
+
+async function useFile(f) {
+  blob = await shrink(f);
+  $("img").src = URL.createObjectURL(blob);
+  $("overlay").innerHTML = "";
+  $("dropLabel").classList.add("hidden");
+  $("previewBox").classList.remove("hidden");
+  $("actions").classList.remove("hidden");
+  $("result").classList.add("hidden");
+  $("err").classList.add("hidden");
+  $("status").textContent = "";
+  plan = null; done.clear(); kept.clear(); laterKeeps = []; protects = []; keepFound = []; setMarkMode(false); renderMarks(); drawOverlay();
+  $("protectPanel").classList.remove("hidden");
+}
+["cam", "file", "again"].forEach(id => $(id).addEventListener("change", onPick));
+
+// カメラ・写真のボタンが開かない画面（Claudeアプリの中など）では、貼り付けを案内する
+["cam", "file"].forEach(id => $(id).addEventListener("click", () => {
+  let opened = false;
+  const mark = () => { opened = true; };
+  window.addEventListener("blur", mark, { once: true });
+  document.addEventListener("visibilitychange", mark, { once: true });
+  setTimeout(() => {
+    window.removeEventListener("blur", mark);
+    document.removeEventListener("visibilitychange", mark);
+    if (!opened && !blob) {
+      $("pickHint").classList.remove("hidden");
+      $("pasteHelp").scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, 1500);
+}));
+
+// ボタン1つで貼り付け（使えない画面では長押しの枠を案内）
+$("pasteBtn").onclick = async () => {
+  try {
+    const items = await navigator.clipboard.read();
+    for (const it of items) {
+      const t = it.types.find(t => t.startsWith("image/"));
+      if (t) { await useFile(await it.getType(t)); return; }
+    }
+    pb.textContent = "コピーした写真が見つかりませんでした。写真を「コピー」してからもう一度どうぞ";
+  } catch (e) {
+    pb.textContent = "この画面ではボタンで貼り付けできません。ここを長押しして「ペースト」を押してください";
+    pb.focus();
+  }
+};
+
+// スマホの大きな写真を軽くする（長い辺を1400pxに）
+function shrink(file) {
+  return new Promise((resolve) => {
+    const im = new Image();
+    im.onload = () => {
+      const s = Math.min(1, 1400 / Math.max(im.width, im.height));
+      const c = document.createElement("canvas");
+      c.width = Math.round(im.width * s); c.height = Math.round(im.height * s);
+      c.getContext("2d").drawImage(im, 0, 0, c.width, c.height);
+      c.toBlob(b => resolve(b || file), "image/jpeg", 0.88);
+    };
+    im.onerror = () => resolve(file);
+    im.src = URL.createObjectURL(file);
+  });
+}
+
+function buildPrompt() {
+  const oneRoom = $("optOneRoom").checked, blur = $("optBlur").checked;
+  const named = protects.map((p, i) => `守${i + 1}: 「${p.name || "名前なし"}」 だいたいの範囲 x=${p.x.toFixed(0)}〜${(p.x + p.w).toFixed(0)}, y=${p.y.toFixed(0)}〜${(p.y + p.h).toFixed(0)}`).join("\n");
+  const keeps = keepWords();
+  const keepRules = keeps.length ? `
+【声や文字で指定された守る物】${keeps.map(k => `「${k}」`).join("、")}
+- これらを写真の中から探し、keep_found に {"name":指定された名前,"found":true/false,"x":物の真ん中,"y":物の真ん中,"seen":"どこに何が見えたか1文"} を1つずつ返す（見つからなければ found:false）。
+- 見つかった物も守る物として扱う（下のルールと同じ）。` : "";
+  const protectRules = protects.length || keeps.length ? `
+【守る物】持ち主が「捨てたくない」と決めた物です。${protects.length ? `指で囲んだ物は写真に青い線と「守1」などの札を描いてあります${blur ? "（中身はプライバシーのためモザイク）" : ""}。
+${named}` : ""}${keepRules}
+- 守る物は絶対に「捨てる」「手放す」対象にしない。片付ける場所(clean)の丸も守る物の上には置かない。
+- 最初の手順(kind:"protect_out")で、守る物を${oneRoom ? "「守る物の箱」（大きめの箱やカゴ1つ）に入れて部屋の隅に置く" : "この部屋の外（別の部屋）へ移す"}。片付けのじゃまになる物から先に移す。
+- 最後の手順(kind:"protect_back")で、守る物を元の部屋に戻し、飾る・しまう場所を提案する。
+- protect_seen に、指で囲んだ守る物（守1など）それぞれについて「写真から何が見えるか」と「大きさ（両手で持てる／ひとりで運べる／二人必要など）」を書く。モザイクで見えない場合は持ち主の書いた名前から推測し、seen に「モザイクで見えない」と書く。` : "";
+  const roomLine = room ? `\nこの写真は「${room}」です。${room}に合った片付けの順番・やり方・道具にしてください。` : "";
+  return `あなたは日本の片付け・掃除のプロです。添付の写真は、利用者の散らかった部屋です。${roomLine}
+掃除が面倒な人・どこから手をつけるか決められない人のために、「楽に、早く、きれいになる」片付けの順番を決めてください。
+${protectRules}
+ルール:
+- 片付ける物・場所(kind:"clean")を3〜8個選び、「何番目に片付けるか」の順番を決める。床をあける物、すぐ終わる物を先にする。
+- 伝えるのは「何番目に片付けるか」だけ。ペットボトルや缶が空か飲みかけか、捨てるか残すかはAIが判断しない（持ち主が決める）。place は「ペットボトル」「マウスとキーボード」のように物の名前だけを書き、「捨てる」とは書かない。
+- shape: ペットボトル・マウス・キーボード・箱・カバンなど、ひとつ（ひとまとまり）ではっきり分かる物は "pin"（番号だけを物の真ん中に置く）。服の山や机の上全体など、広がった範囲を指すときだけ "area"。迷ったら "pin"。
+- 写真上の位置を、写真の左上を(0,0)、右下を(100,100)とした割合で x, y に入れる。pin は物の真ん中を指す。area のときだけ r に範囲を囲む円の半径（写真の幅に対する割合、6〜15）を入れる。写真に実際に写っている物の位置を正確に指すこと。
+- 同じ場所に番号を重ねない。近くにある同じ種類の物（ペットボトル数本など）は1つの番号にまとめる。
+- how は短い手順を1〜2個（例:「キッチンへ持っていく」「机の右に置く」）。
+- fill: 床の見えている面積のうち、物で埋まっている割合（0〜100の目安）と、いちばん場所を取っている物を書く。
+- decisions: 写真に見える物のうち、手放すかどうか迷いそうな物を0〜4個（守る物、ペットボトルや空き箱などの消耗品・ゴミは除く。迷う物がなければ空の配列）。suggest は "残す候補" "手放す候補" "保留" のどれか。判断の物差しは「場所を取るか」「ほかの物で代わりがきくか」「あとで同じ物を買い直せるか」。rebuy は "買い直せそう" "むずかしそう" "わからない" のどれか。query はメルカリや楽天で同じ物を探すための短い検索語。決めつけず、持ち主が決められるように理由を1文で。
+- tools は3〜5個。日本のホームセンター・100円ショップ・通販で買える物にし、product に実在する定番の商品名（ブランド名つき、例:「激落ちくん メラミンスポンジ」「ジョイ」）を入れる。
+- 文章はすべて日本語、やさしい言い方で。
+- 写真が部屋でない場合は not_room を true にし、message に理由を書く。
+
+次のJSONだけを返してください:
+{"not_room":false,"message":"","summary":"部屋の状態と全体の作戦を1〜2文","total_minutes":30,
+ "fill":{"percent":60,"biggest":"床の段ボール箱"},
+ "protect_seen":[{"no":1,"seen":"写真から見える物","size":"ひとりで運べる"}],
+ "keep_found":[{"name":"マウス","found":true,"x":70,"y":55,"seen":"机の右にある黒いマウス"}],
+ "steps":[{"kind":"clean","place":"床のペットボトル","shape":"pin","x":40,"y":70,"r":0,"why":"この順番にする理由を1文","how":["手順1","手順2"],"minutes":5}],
+ "decisions":[{"item":"古い雑誌の束","where":"床の左側","suggest":"手放す候補","reason":"理由を1文","rebuy":"買い直せそう","query":"検索語"}],
+ "tools":[{"name":"ゴミ袋 45L","product":"ジャパックス 45L 半透明ゴミ袋","why":"使う理由を1文","steps":[1,2],"emoji":"🗑️"}],
+ "tips":["続けるコツ1","続けるコツ2"]}`;
+}
+
+$("go").onclick = async () => {
+  if (!blob) return;
+  $("err").classList.add("hidden");
+  if (!GEM.get()) { openKey(true); return; }
+  $("go").disabled = true;
+  $("status").innerHTML = '<span class="spinner"></span>写真を見て作戦を考えています…（30秒〜1分ほど）';
+  try {
+    setMarkMode(false);
+    const data = await sample.json(buildPrompt(), { images: await markedImage() });
+    if (data.not_room) { showErr(data.message || "部屋の写真を選んでください。"); return; }
+    if (!Array.isArray(data.steps) || !data.steps.length) throw { code: "invalid_json" };
+    render(data);
+    $("status").textContent = "";
+  } catch (e) {
+    showErr(ERR[e && e.code] || "うまくいきませんでした。もう一度お試しください。");
+  } finally {
+    $("go").disabled = false;
+  }
+};
+
+function showErr(msg) {
+  $("status").textContent = "";
+  $("err").textContent = msg;
+  $("err").classList.remove("hidden");
+}
+
+const clamp = (v, a, b) => Math.max(a, Math.min(b, Number(v) || 0));
+
+function render(data) {
+  plan = data; done.clear(); kept.clear(); laterKeeps = []; renderLater(); active = 0;
+  $("roomBox").classList.add("hidden");
+  $("actions").classList.add("hidden");
+  $("result").classList.remove("hidden");
+  const n = data.steps.length;
+  $("protectPanel").classList.add("hidden");
+  const fill = data.fill && data.fill.percent != null ? `<br>床の埋まり具合：約${esc(data.fill.percent)}%（いちばん場所を取っている物：${esc(data.fill.biggest || "")}）` : "";
+  $("summary").innerHTML = `${esc(data.summary || "")}<br><b>全部で${n}つ・約${esc(data.total_minutes || "")}分</b>${fill}`;
+  const seen = (data.protect_seen || []).filter(p => protects[p.no - 1]);
+  keepFound = (data.keep_found || []).filter(k => k && k.name);
+  const lines = seen.map(p => `<li>守${p.no}「${esc(protects[p.no - 1].name || "名前なし")}」：${esc(p.seen)}／${esc(p.size || "")}</li>`)
+    .concat(keepFound.map(k => `<li>「${esc(k.name)}」：${k.found ? esc(k.seen || "見つかりました") + "（写真の🛡）" : "写真の中で見つかりませんでした。指で囲んでください"}</li>`));
+  $("seen").classList.toggle("hidden", !lines.length);
+  $("seen").innerHTML = lines.length ? `<b>🛡️ 守る物のAIの理解</b>（ちがっていたら撮り直してください）<ul>${lines.join("")}</ul>` : "";
+  const decs = data.decisions || [];
+  $("decCard").classList.toggle("hidden", !decs.length);
+  $("decs").innerHTML = decs.map((d, i) => {
+    const q = encodeURIComponent(d.query || d.item);
+    const cls = d.suggest === "残す候補" ? "keep" : d.suggest === "手放す候補" ? "go" : "hold";
+    return `<div class="dec">
+      <div class="dec-top"><b>${esc(d.item)}</b><span class="chip ${cls}">AI：${esc(d.suggest)}</span></div>
+      <div class="tool-for">${esc(d.where || "")}</div>
+      <div class="tool-why">${esc(d.reason || "")}</div>
+      <div class="tool-for">買い直し：${esc(d.rebuy || "わからない")}（下のボタンで自分で確かめられます）</div>
+      <div class="shop">
+        <a href="https://jp.mercari.com/search?keyword=${q}" target="_blank" rel="noopener">メルカリで探す</a>
+        <a href="https://search.rakuten.co.jp/search/mall/${q}/" target="_blank" rel="noopener">楽天で探す</a>
+      </div>
+      <div class="choice">${["残す", "手放す", "保留"].map(c => `<button data-d="${i}" data-v="${c}">${c}</button>`).join("")}</div>
+    </div>`;
+  }).join("");
+  document.querySelectorAll("[data-d]").forEach(b => b.onclick = () => {
+    choice[b.dataset.d] = b.dataset.v; saveRecordSoon();
+    document.querySelectorAll(`[data-d="${b.dataset.d}"]`).forEach(x => x.classList.toggle("sel", x.dataset.v === b.dataset.v));
+  });
+
+  $("steps").innerHTML = data.steps.map((s, i) => `
+    <div class="step${s.kind && s.kind !== "clean" ? " prot" : ""}" id="st${i}">
+      <div class="step-head" data-i="${i}">
+        <div class="num">${i + 1}</div>
+        <div class="step-title">${s.kind && s.kind !== "clean" ? "🛡️ " : ""}${esc(s.place)}</div>
+        <div class="mins">${s.minutes ? `約${esc(s.minutes)}分` : ""}</div>
+      </div>
+      <div class="why">${esc(s.why || "")}</div>
+      <ol>${(s.how || []).map(h => `<li>${esc(h)}</li>`).join("")}</ol>
+      <div class="step-foot">
+        <label class="check"><input type="checkbox" data-c="${i}"> できた！</label>
+        <span class="keptlabel">残す物にしました（手をつけなくてOK）</span>
+        ${s.kind && s.kind !== "clean" ? "" : `<button class="keepbtn" data-k="${i}">🛡️ 残す</button>`}
+      </div>
+    </div>`).join("");
+
+  const ico = ["🧺","🗑️","🧽","🧴","📦","🧹"];
+  $("tools").innerHTML = (data.tools || []).map((t, i) => {
+    const q = encodeURIComponent(t.product || t.name);
+    const forSteps = (t.steps || []).map(k => "①②③④⑤⑥⑦⑧"[k - 1] || k).join("");
+    return `<div class="tool">
+      <div class="tool-ico">${esc(t.emoji || ico[i % ico.length])}</div>
+      <div>
+        <div class="tool-name">${esc(t.name)}</div>
+        <div class="tool-prod">おすすめ：${esc(t.product || "")}</div>
+        <div class="tool-why">${esc(t.why || "")}</div>
+        ${forSteps ? `<div class="tool-for">使う場所：${forSteps}</div>` : ""}
+        <div class="shop">
+          <a href="https://www.amazon.co.jp/s?k=${q}" target="_blank" rel="noopener">Amazonで見る</a>
+          <a href="https://search.rakuten.co.jp/search/mall/${q}/" target="_blank" rel="noopener">楽天で見る</a>
+        </div>
+      </div>
+    </div>`;
+  }).join("");
+
+  const tips = data.tips || [];
+  $("tipsCard").classList.toggle("hidden", !tips.length);
+  $("tips").innerHTML = tips.map(t => `<li>${esc(t)}</li>`).join("");
+
+  document.querySelectorAll(".step-head").forEach(el => el.onclick = () => select(+el.dataset.i));
+  document.querySelectorAll("[data-k]").forEach(el => el.onclick = () => {
+    const i = +el.dataset.k;
+    if (kept.has(i)) { kept.delete(i); el.textContent = "🛡️ 残す"; }
+    else { kept.add(i); done.delete(i); document.querySelector(`[data-c="${i}"]`).checked = false; el.textContent = "やっぱり片付ける"; }
+    const next = plan.steps.findIndex((_, k) => !done.has(k) && !kept.has(k)); if (next >= 0) active = next;
+    draw(); saveRecordSoon();
+  });
+  document.querySelectorAll("[data-c]").forEach(el => el.onchange = () => {
+    const i = +el.dataset.c;
+    el.checked ? done.add(i) : done.delete(i);
+    if (el.checked) { const next = plan.steps.findIndex((_, k) => !done.has(k) && !kept.has(k)); if (next >= 0) active = next; }
+    draw();
+    if (el.checked && !$("finishBtn").classList.contains("hidden")) $("finishBtn").scrollIntoView({ behavior: "smooth", block: "center" });
+  });
+  draw();
+  recId = "r" + Date.now(); finished = false; saveRecordSoon();
+  $("photo").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function select(i) {
+  active = i; draw();
+  $("photo").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function protectSvg(W, H) {
+  const fs = Math.max(16, W * 0.028);
+  const kf = keepFound.filter(k => k.found).map(k => {
+    const x = clamp(k.x, 0, 100) / 100 * W, y = clamp(k.y, 0, 100) / 100 * H, r = fs * 0.85;
+    return `<g class="kf"><circle cx="${x}" cy="${y}" r="${r}"/><text x="${x}" y="${y}" font-size="${r}">🛡</text></g>`;
+  }).join("");
+  return kf + protects.map((p, i) => {
+    const x = p.x / 100 * W, y = p.y / 100 * H;
+    return `<g class="pr"><polygon points="${ptsAttr(p.pts, W, H)}"/>
+      <rect class="lab" x="${x}" y="${Math.max(0, y - fs * 1.5)}" width="${fs * 2.6}" height="${fs * 1.5}" rx="5"/>
+      <text x="${x + fs * 0.3}" y="${Math.max(0, y - fs * 1.5) + fs * 0.75}" font-size="${fs}">守${i + 1}</text></g>`;
+  }).join("");
+}
+
+const ptsAttr = (pts, W, H) => pts.map(q => `${(q.x / 100 * W).toFixed(1)},${(q.y / 100 * H).toFixed(1)}`).join(" ");
+
+function drawOverlay() {
+  if (plan) return draw();
+  const img = $("img"), svg = $("overlay");
+  const W = img.naturalWidth || 1000, H = img.naturalHeight || 1000;
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.innerHTML = protectSvg(W, H) + (dragging ? `<g class="pr"><polyline points="${ptsAttr(dragging.pts, W, H)}"/></g>` : "");
+}
+
+function draw() {
+  const img = $("img"), svg = $("overlay");
+  const W = img.naturalWidth || 1000, H = img.naturalHeight || 1000;
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  const steps = plan.steps;
+  const badge = Math.max(16, W * 0.03);
+  // 番号の置き場所: はっきりした物は真ん中に番号だけ（pin）、広い範囲だけ細い丸（area）
+  const pos = steps.map(s => ({
+    x: clamp(s.x, 0, 100) / 100 * W, y: clamp(s.y, 0, 100) / 100 * H,
+    area: s.shape === "area", r: clamp(s.r || 10, 4, 18) / 100 * W,
+  }));
+  const bp = pos.map(p => ({ x: clamp(p.x, badge, W - badge), y: clamp(p.y, badge, H - badge) }));
+  // 番号どうしが重ならないように少しずつ押し離す
+  const min = badge * 2.3;
+  for (let it = 0; it < 40; it++) {
+    let moved = false;
+    for (let i = 0; i < bp.length; i++) for (let j = i + 1; j < bp.length; j++) {
+      let dx = bp[j].x - bp[i].x, dy = bp[j].y - bp[i].y, d = Math.hypot(dx, dy);
+      if (d >= min) continue;
+      if (d < 0.01) { dx = 1; dy = 0; d = 1; }
+      const push = (min - d) / 2;
+      bp[i].x -= dx / d * push; bp[i].y -= dy / d * push;
+      bp[j].x += dx / d * push; bp[j].y += dy / d * push;
+      moved = true;
+    }
+    bp.forEach(b => { b.x = clamp(b.x, badge, W - badge); b.y = clamp(b.y, badge, H - badge); });
+    if (!moved) break;
+  }
+  // 後ろの番号から描いて、①が一番上に来るように
+  svg.innerHTML = steps.map((s, i) => ({ s, i })).reverse().map(({ s, i }) => {
+    const p = pos[i], b = bp[i];
+    const isActive = i === active && !done.has(i) && !kept.has(i);
+    const cls = ["mk", s.kind && s.kind !== "clean" ? "prot" : "", kept.has(i) ? "kept" : "", done.has(i) ? "done" : "", isActive ? "active" : ""].join(" ");
+    const lead = Math.hypot(b.x - p.x, b.y - p.y) > badge * 0.8 ? `<line class="lead" x1="${p.x}" y1="${p.y}" x2="${b.x}" y2="${b.y}"/><circle class="dot" cx="${p.x}" cy="${p.y}" r="${badge * 0.25}"/>` : "";
+    return `<g class="${cls}" data-i="${i}">
+      ${p.area ? `<circle class="ring" cx="${p.x}" cy="${p.y}" r="${p.r}"/>` : ""}
+      ${isActive ? `<circle class="halo" cx="${b.x}" cy="${b.y}" r="${badge * 1.5}"/>` : ""}
+      ${lead}
+      <circle class="badge" cx="${b.x}" cy="${b.y}" r="${badge}"/>
+      <text x="${b.x}" y="${b.y}" font-size="${badge * (kept.has(i) ? 0.9 : 1.15)}">${kept.has(i) ? "🛡" : i + 1}</text>
+    </g>`;
+  }).join("");
+  svg.insertAdjacentHTML("afterbegin", protectSvg(W, H));
+  svg.querySelectorAll(".mk").forEach(g => g.onclick = () => {
+    const i = +g.dataset.i; active = i; draw();
+    $("st" + i).scrollIntoView({ behavior: "smooth", block: "center" });
+  });
+  steps.forEach((_, i) => {
+    $("st" + i).classList.toggle("active", i === active && !done.has(i) && !kept.has(i));
+    $("st" + i).classList.toggle("done", done.has(i));
+    $("st" + i).classList.toggle("kept", kept.has(i));
+  });
+  const total = steps.length - kept.size;
+  const p = total ? done.size / total : 1;
+  $("bar").style.width = (p * 100) + "%";
+  $("doneText").textContent = `${done.size} / ${total} 完了` + (kept.size ? `（残す物 ${kept.size}）` : "");
+  $("cheer").classList.toggle("hidden", p < 1);
+  $("finishBtn").classList.toggle("hidden", p < 1);
+}
+
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+// 写真の読み込みが終わったら丸を描き直す
+$("img").addEventListener("load", () => drawOverlay());
+
+// ===== 守る物を囲む =====
+function setMarkMode(on) {
+  markMode = on;
+  $("photo").classList.toggle("marking", on);
+  $("markBtn").classList.toggle("on", on);
+  $("markBtn").textContent = on ? "✅ 囲み終わった" : (protects.length ? "✋ もうひとつ囲む" : "✋ 囲む");
+}
+$("markBtn").onclick = () => setMarkMode(!markMode);
+
+function pct(e) {
+  const r = $("overlay").getBoundingClientRect();
+  return { x: clamp((e.clientX - r.left) / r.width * 100, 0, 100), y: clamp((e.clientY - r.top) / r.height * 100, 0, 100) };
+}
+const ov = $("overlay");
+ov.addEventListener("pointerdown", e => {
+  if (!markMode) return;
+  e.preventDefault();
+  ov.setPointerCapture(e.pointerId);
+  dragging = { pts: [pct(e)] };
+});
+ov.addEventListener("pointermove", e => {
+  if (!dragging) return;
+  const p = pct(e), last = dragging.pts[dragging.pts.length - 1];
+  if (Math.hypot(p.x - last.x, p.y - last.y) < 0.6) return;
+  dragging.pts.push(p);
+  drawOverlay();
+});
+ov.addEventListener("pointerup", () => {
+  if (!dragging) return;
+  const pts = dragging.pts; dragging = null;
+  const xs = pts.map(q => q.x), ys = pts.map(q => q.y);
+  const d = { x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys) };
+  if (pts.length >= 5 && d.w > 2 && d.h > 2) {
+    protects.push({ ...d, pts, name: "" });
+    renderMarks();
+    setMarkMode(false);
+    const inp = document.querySelector(`[data-m="${protects.length - 1}"]`);
+    if (inp) inp.focus();
+  }
+  drawOverlay();
+});
+
+function renderMarks() {
+  $("marks").innerHTML = protects.map((p, i) => `<div class="markrow">
+    <span class="pnum">守${i + 1}</span>
+    <input data-m="${i}" value="${esc(p.name)}" placeholder="名前（例：好きなフィギュア）" maxlength="40">
+    <button class="del" data-del="${i}" aria-label="消す">×</button></div>`).join("");
+  document.querySelectorAll("[data-m]").forEach(el => el.oninput = () => { protects[+el.dataset.m].name = el.value.trim(); });
+  document.querySelectorAll("[data-del]").forEach(el => el.onclick = () => { protects.splice(+el.dataset.del, 1); renderMarks(); drawOverlay(); setMarkMode(false); });
+}
+
+// ===== 部屋を選ぶ =====
+document.querySelectorAll("[data-room]").forEach(b => b.onclick = () => {
+  room = room === b.dataset.room ? "" : b.dataset.room;
+  document.querySelectorAll("[data-room]").forEach(x => x.classList.toggle("sel", x.dataset.room === room));
+});
+
+// ===== あとから残す物 =====
+function renderLater() {
+  $("laterList").innerHTML = laterKeeps.map((k, i) => `<span>🛡️ ${esc(k)}<button data-lk="${i}" aria-label="消す">×</button></span>`).join("");
+  document.querySelectorAll("[data-lk]").forEach(b => b.onclick = () => { laterKeeps.splice(+b.dataset.lk, 1); renderLater(); saveRecordSoon(); });
+  $("laterNote").classList.toggle("hidden", !laterKeeps.length);
+  $("laterNote").textContent = laterKeeps.length ? "片付けるときに、これらはよけておいてください。捨てずに残します。" : "";
+}
+function addLater() {
+  const words = $("laterWords").value.split(/[、,，。\s]+/).map(w => w.trim()).filter(Boolean);
+  words.forEach(w => { if (!laterKeeps.includes(w)) laterKeeps.push(w); });
+  $("laterWords").value = "";
+  renderLater(); saveRecordSoon();
+}
+$("laterAdd").onclick = addLater;
+$("laterWords").addEventListener("keydown", e => { if (e.key === "Enter") addLater(); });
+
+// ===== 片付け完了 → お疲れさまでした → 最初に戻る =====
+$("finishBtn").onclick = () => {
+  const n = done.size;
+  finished = true; saveRecord(true);
+  $("popText").textContent = `${room ? room + "の" : ""}片付け ${n}か所、ぜんぶ終わりました。お部屋がすっきりしましたね。` + (recItems().length ? `残した物${recItems().length}こは「残した物の記録」に保存しました。` : "");
+  $("pop").classList.remove("hidden");
+};
+$("popBack").onclick = () => { $("pop").classList.add("hidden"); resetAll(); show("vTitle"); };
+function resetAll() {
+  recId = null; finished = false;
+  blob = null; plan = null; done.clear(); kept.clear(); laterKeeps = []; protects = []; keepFound = []; room = "";
+  document.querySelectorAll("[data-room]").forEach(x => x.classList.remove("sel"));
+  $("keepWords").value = ""; $("laterWords").value = ""; renderLater(); renderMarks(); setMarkMode(false);
+  $("overlay").innerHTML = ""; $("img").removeAttribute("src");
+  $("result").classList.add("hidden"); $("previewBox").classList.add("hidden");
+  $("dropLabel").classList.remove("hidden"); $("roomBox").classList.remove("hidden");
+  $("status").textContent = ""; $("err").classList.add("hidden");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+// ===== 声や文字で守る物を伝える =====
+function keepWords() {
+  return $("keepWords").value.split(/[、,，。\s]+/).map(w => w.trim()).filter(Boolean).slice(0, 12);
+}
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec = null;
+function listen(btnId, inputId, noteId, onDone) {
+  const note = msg => { $(noteId).classList.remove("hidden"); $(noteId).textContent = msg; };
+  const fallback = msg => {
+    $(btnId).classList.remove("on");
+    note(msg || "この画面では声の入力が使えません。入力欄を押して、キーボードのマイクボタン🎤で話してください。");
+    $(inputId).focus();
+  };
+  $(btnId).onclick = () => {
+    if (rec) { rec.stop(); return; }
+    if (!SR) return fallback();
+    try {
+      rec = new SR();
+      rec.lang = "ja-JP"; rec.interimResults = false; rec.continuous = false;
+      rec.onresult = e => {
+        const t = [...e.results].map(r => r[0].transcript).join("、");
+        const cur = $(inputId).value.trim();
+        $(inputId).value = (cur ? cur + "、" : "") + t;
+        note("聞き取りました。ちがっていたら文字で直せます。");
+        if (onDone) onDone();
+      };
+      rec.onerror = e => { rec = null; fallback(e.error === "no-speech" ? "声が聞き取れませんでした。もう一度🎤を押して話してください。" : null); };
+      rec.onend = () => { rec = null; $(btnId).classList.remove("on"); };
+      rec.start();
+      $(btnId).classList.add("on");
+      note("聞いています…残したい物を言ってください（例：マウス、カップ）");
+    } catch (e) { rec = null; fallback(); }
+  };
+}
+listen("micBtn", "keepWords", "micNote");
+listen("laterMic", "laterWords", "laterNote", addLater);
+
+// ===== 画面の切り替え =====
+const SCREENS = ["vTitle", "vMode", "vHome", "vRecords", "vKey"];
+function show(id) {
+  SCREENS.forEach(k => $(k).classList.toggle("hidden", k !== id));
+  $("outApp").classList.add("hidden");
+  $("bgmBtn").classList.toggle("hidden", id === "vTitle" && !bgm.started);
+  if (id === "vMode") countRecords();
+  if (id === "vRecords") renderRecords();
+  window.scrollTo(0, 0);
+}
+$("startBtn").onclick = () => { bgm.start(); show("vMode"); };
+$("backTitle").onclick = () => show("vTitle");
+$("goHome").onclick = () => show("vHome");
+$("homeBack").onclick = () => show("vMode");
+$("goRecords").onclick = () => show("vRecords");
+// ===== AIの設定画面 =====
+let keyReturn = "vMode";
+function keyStatus() {
+  const has = !!GEM.get();
+  $("keyState").className = "keystate " + (has ? "ok" : "ng");
+  $("keyState").textContent = has ? "✓ 鍵は設定済みです" : "まだ鍵が設定されていません";
+  $("keyDel").classList.toggle("hidden", !has);
+  $("keyMark").textContent = has ? " ✓" : "（未設定）";
+}
+function openKey(fromHome) {
+  keyReturn = fromHome ? "vHome" : "vMode";
+  $("keyInput").value = ""; $("keyMsg").textContent = "";
+  keyStatus(); show("vKey");
+}
+$("goKey").onclick = () => openKey(false);
+$("keyBack").onclick = () => show(keyReturn);
+$("keyEye").onclick = () => {
+  const i = $("keyInput"), on = i.type === "password";
+  i.type = on ? "text" : "password"; $("keyEye").textContent = on ? "かくす" : "表示";
+};
+$("keySave").onclick = async () => {
+  const k = $("keyInput").value.trim().replace(/\s+/g, "");
+  if (!k) { $("keyMsg").textContent = "鍵を貼り付けてください。"; return; }
+  const old = GEM.get();
+  if (!GEM.set(k)) { $("keyMsg").textContent = "この端末に保存できませんでした（プライベートモードでは保存できません）。"; return; }
+  $("keySave").disabled = true;
+  $("keyMsg").innerHTML = '<span class="spinner"></span>Geminiにつながるか試しています…';
+  try {
+    await gemini.test();
+    $("keyInput").value = "";
+    $("keyMsg").textContent = "✓ つながりました！片付けナビのAIが使えます。";
+    keyStatus();
+  } catch (e) {
+    if (e && (e.code === "bad_key" || e.code === "key_denied")) GEM.set(old);
+    $("keyMsg").textContent = ERR[e && e.code] || "うまくいきませんでした。もう一度お試しください。";
+    keyStatus();
+  } finally { $("keySave").disabled = false; }
+};
+$("keyDel").onclick = () => dialog("鍵を消しますか？", "この端末から鍵を消します。Google側の鍵は残るので、また貼り付ければ使えます。", [
+  ["消す", "danger", () => { GEM.set(""); keyStatus(); $("keyMsg").textContent = "この端末から鍵を消しました。"; }],
+  ["やめる", "ghost", null],
+]);
+keyStatus();
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+$("recBack").onclick = () => { if (!$("recDetail").classList.contains("hidden")) renderRecords(); else show("vMode"); };
+$("goOut").onclick = () => {
+  const f = $("outFrame");
+  if (!f.srcdoc) f.srcdoc = '<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{overflow-x:hidden}.stack,.card,.items{grid-template-columns:minmax(0,1fr)}img{max-width:100%}</style></head><body>' + $("okibaTpl").innerHTML + "</body></html>";
+  SCREENS.forEach(k => $(k).classList.add("hidden"));
+  $("outApp").classList.remove("hidden");
+};
+$("outBack").onclick = () => show("vMode");
+
+function dialog(title, text, btns) {
+  $("dlgTitle").textContent = title; $("dlgText").textContent = text;
+  const box = $("dlgBtns"); box.innerHTML = "";
+  btns.forEach(([label, cls, fn]) => {
+    const b = document.createElement("button"); b.className = "btn " + cls; b.textContent = label;
+    b.onclick = () => { $("dlg").classList.add("hidden"); fn && fn(); };
+    box.appendChild(b);
+  });
+  $("dlg").classList.remove("hidden");
+}
+
+// ===== 外出先の画面から呼ぶ：写真の中で置いた物を探す（AIは本体側で呼ぶ） =====
+window.findPlacedItems = async (names, dataUrls) => {
+  if (!GEM.get()) return { error: ERR.no_key };
+  const toBlob = u => {
+    const [head, b64] = u.split(","); const bin = atob(b64);
+    const arr = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    return new Blob([arr], { type: (head.match(/:(.*?);/) || [])[1] || "image/jpeg" });
+  };
+  const prompt = `添付の写真${dataUrls.length}枚は、持ち主が外出先（ホテルなど）で荷物を置いた部屋です。写真の順に 0, 1, 2… と番号をつけます。
+持ち主が置いた物: ${names.map(n => `「${n}」`).join("、")}
+それぞれを写真の中から探し、その物の真ん中の位置を答えてください。位置は写真の左上を(0,0)、右下を(100,100)とした割合です。
+- 名前どおりの物が見当たらなくても、それらしい物（例:「目薬」なら小さな容器、「充電器」ならコンセント付近のケーブル）があれば、その位置を答え、where に「〜らしい物」と書く。
+- 本当にそれらしい物が写っていない場合だけ found を false にする。
+- name は指定された名前をそのまま使う。同じ位置を2つの物に使わない。
+次のJSON配列だけを返してください:
+[{"name":"目薬","found":true,"shot":0,"x":42,"y":61,"where":"机の右はし"}]`;
+  try {
+    const list = await gemini.json(prompt, { images: dataUrls.map(toBlob) });
+    return { list: Array.isArray(list) ? list : [] };
+  } catch (e) {
+    return { error: ERR[e && e.code] || "AIでうまく探せませんでした。" };
+  }
+};
+
+// ===== BGM（音源ファイルなし。ブラウザの中でやさしい曲を自動で鳴らす） =====
+const bgm = (() => {
+  let ctx = null, master = null, verb = null, timer = null, on = true, started = false, bar = 0, nextT = 0;
+  try { on = localStorage.getItem("katazuke-bgm") !== "off"; } catch (e) {}
+  const hz = m => 440 * Math.pow(2, (m - 69) / 12);
+  const BPM = 74, beat = 60 / BPM;
+  // ローファイ風のやさしい進行: Fmaj7 → Em7 → Dm7 → Cmaj7（各1小節）
+  const chords = [[53, 57, 60, 64], [52, 55, 59, 62], [50, 53, 57, 60], [48, 52, 55, 59]];
+  // 8小節ぶんのメロディ（[拍, 音, 長さ(拍)]）。前半と後半で少し変える
+  const melody = [
+    [[0, 76, 1.5], [1.5, 74, 0.5], [2, 72, 2]],
+    [[0, 74, 1], [1, 71, 1], [2, 67, 2]],
+    [[0.5, 69, 0.5], [1, 72, 1], [2, 74, 1], [3, 77, 1]],
+    [[0, 76, 3]],
+    [[0, 79, 1], [1, 76, 1], [2, 74, 1.5], [3.5, 72, 0.5]],
+    [[0, 74, 1.5], [1.5, 76, 0.5], [2, 71, 2]],
+    [[0, 69, 1], [1, 72, 1], [2, 77, 1], [3, 76, 0.5], [3.5, 74, 0.5]],
+    [[0, 72, 3.5]],
+  ];
+  function makeReverb() {
+    const len = ctx.sampleRate * 2.8, buf = ctx.createBuffer(2, len, ctx.sampleRate);
+    for (let ch = 0; ch < 2; ch++) { const d = buf.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3); }
+    const c = ctx.createConvolver(); c.buffer = buf; return c;
+  }
+  function out(node, wet) {
+    node.connect(master);
+    const s = ctx.createGain(); s.gain.value = wet; node.connect(s); s.connect(verb);
+  }
+  // エレピ風の音（基音＋やわらかい倍音、すっと減衰）
+  function keys(m, t, len, vol) {
+    const g = ctx.createGain(), f = ctx.createBiquadFilter();
+    f.type = "lowpass"; f.frequency.value = 2200;
+    [[1, 1, "sine"], [2, 0.18, "sine"], [3.01, 0.05, "triangle"]].forEach(([mul, a, type]) => {
+      const o = ctx.createOscillator(), og = ctx.createGain();
+      o.type = type; o.frequency.value = hz(m) * mul; o.detune.value = (Math.random() - 0.5) * 6;
+      og.gain.value = a; o.connect(og); og.connect(f); o.start(t); o.stop(t + len + 1.6);
+    });
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(vol, t + 0.012);
+    g.gain.exponentialRampToValueAtTime(vol * 0.35, t + 0.5);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + len + 1.5);
+    f.connect(g); out(g, 0.35);
+  }
+  // ふんわりした和音の背景
+  function pad(ms, t, len) {
+    const g = ctx.createGain(), f = ctx.createBiquadFilter();
+    f.type = "lowpass"; f.frequency.value = 900;
+    ms.forEach(m => [-4, 4].forEach(dt => {
+      const o = ctx.createOscillator(); o.type = "triangle"; o.frequency.value = hz(m); o.detune.value = dt;
+      o.connect(f); o.start(t); o.stop(t + len + 1.2);
+    }));
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.018, t + 1.2);
+    g.gain.setValueAtTime(0.018, t + len - 0.3); g.gain.linearRampToValueAtTime(0, t + len + 1);
+    f.connect(g); out(g, 0.6);
+  }
+  function bass(m, t, len) {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = "sine"; o.frequency.value = hz(m);
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.09, t + 0.03); g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+    o.connect(g); o.start(t); o.stop(t + len + 0.1); out(g, 0.05);
+  }
+  // 小さなシェイカー（ノイズ）でゆるいリズム
+  function shaker(t, vol) {
+    const len = 0.06, buf = ctx.createBuffer(1, ctx.sampleRate * len, ctx.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+    const src = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+    src.buffer = buf; f.type = "highpass"; f.frequency.value = 6000; g.gain.value = vol;
+    src.connect(f); f.connect(g); src.start(t); out(g, 0.2);
+  }
+  function playBar(t) {
+    const c = chords[bar % 4], swing = beat * 0.08;
+    pad(c, t, beat * 4);
+    bass(c[0] - 12, t, beat * 1.8); bass(c[0] - 12 + (bar % 2 ? 7 : 12), t + beat * 2.5, beat * 1.2);
+    // 和音をやさしく分散
+    [0, 1.5, 2.5].forEach((b, k) => keys(c[(k + 1) % 4] + 12, t + b * beat, beat * 1.2, 0.035));
+    melody[bar % 8].forEach(([b, m, l]) => keys(m, t + b * beat + (b % 1 ? swing : 0), l * beat, 0.07));
+    for (let i = 0; i < 8; i++) shaker(t + i * beat / 2 + (i % 2 ? swing : 0), i % 2 ? 0.035 : 0.018);
+    bar++;
+  }
+  function loop() {
+    if (!ctx) return;
+    while (nextT < ctx.currentTime + 1.5) { playBar(nextT); nextT += beat * 4; }
+  }
+  function play() {
+    if (!ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      ctx = new AC(); master = ctx.createGain(); master.gain.value = 0.9;
+      const comp = ctx.createDynamicsCompressor(); master.connect(comp); comp.connect(ctx.destination);
+      verb = makeReverb(); const vg = ctx.createGain(); vg.gain.value = 0.5; verb.connect(vg); vg.connect(comp);
+    }
+    if (ctx.state === "suspended") ctx.resume();
+    if (!timer) { bar = 0; nextT = ctx.currentTime + 0.15; loop(); timer = setInterval(loop, 400); }
+  }
+  function stop() {
+    clearInterval(timer); timer = null;
+    if (ctx) { ctx.close(); ctx = null; }
+  }
+  function label() { $("bgmBtn").textContent = on ? "♪ BGM オン" : "♪ BGM オフ"; $("bgmBtn").classList.toggle("off", !on); }
+  $("bgmBtn").onclick = () => {
+    on = !on; try { localStorage.setItem("katazuke-bgm", on ? "on" : "off"); } catch (e) {}
+    on ? play() : stop(); label();
+  };
+  // スマホで音が止まったら、次のタッチで再開
+  document.addEventListener("pointerdown", () => { if (on && started && ctx && ctx.state !== "running") ctx.resume(); });
+  label();
+  return { start() { started = true; $("bgmBtn").classList.remove("hidden"); if (on) play(); }, get started() { return started; } };
+})();
+
+// ===== 残した物の記録（このスマホの中だけに保存） =====
+let recId = null, finished = false, recTimer = null;
+const DB = (() => {
+  let dbp = null;
+  const open = () => dbp || (dbp = new Promise((res, rej) => {
+    try {
+      const r = indexedDB.open("katazuke-records", 1);
+      r.onupgradeneeded = () => r.result.createObjectStore("records", { keyPath: "id" });
+      r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+    } catch (e) { rej(e); }
+  }));
+  const tx = async (mode, fn) => {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const t = db.transaction("records", mode), st = t.objectStore("records");
+      const out = fn(st);
+      t.oncomplete = () => res(out && out.result); t.onerror = () => rej(t.error);
+    });
+  };
+  return {
+    put: r => tx("readwrite", st => st.put(r)),
+    del: id => tx("readwrite", st => st.delete(id)),
+    all: () => tx("readonly", st => st.getAll()),
+  };
+})();
+
+// 残した物の一覧（写真の上の位置つき）
+function recItems() {
+  if (!plan) return [];
+  const items = [];
+  protects.forEach((p, i) => items.push({ name: p.name || `守${i + 1}（指で囲んだ物）`, x: p.x + p.w / 2, y: p.y + p.h / 2, pts: p.pts }));
+  keepFound.filter(k => k.found).forEach(k => items.push({ name: k.name, x: clamp(k.x, 0, 100), y: clamp(k.y, 0, 100) }));
+  [...kept].sort((a, b) => a - b).forEach(i => { const s = plan.steps[i]; items.push({ name: s.place, x: clamp(s.x, 0, 100), y: clamp(s.y, 0, 100) }); });
+  laterKeeps.forEach(k => items.push({ name: k }));
+  (plan.decisions || []).forEach((d, i) => { if (choice[i] === "残す") items.push({ name: d.item }); });
+  return items;
+}
+function goneItems() {
+  return plan ? (plan.decisions || []).filter((d, i) => choice[i] === "手放す").map(d => d.item) : [];
+}
+// 片付け前の写真に、残した物の番号と囲みを描く
+function recordImage(items) {
+  return new Promise(resolve => {
+    const im = $("img"), W = im.naturalWidth, H = im.naturalHeight;
+    if (!W) return resolve(null);
+    const c = document.createElement("canvas"); c.width = W; c.height = H;
+    const g = c.getContext("2d"); g.drawImage(im, 0, 0);
+    const r = Math.max(16, W * 0.03);
+    items.forEach((it, n) => {
+      if (it.pts) {
+        g.beginPath(); it.pts.forEach((q, k) => g[k ? "lineTo" : "moveTo"](q.x / 100 * W, q.y / 100 * H)); g.closePath();
+        g.lineWidth = Math.max(4, W * 0.006); g.strokeStyle = "#2f80ed"; g.stroke();
+      }
+      if (it.x == null) return;
+      const x = it.x / 100 * W, y = it.y / 100 * H;
+      g.beginPath(); g.arc(x, y, r, 0, 7); g.fillStyle = "#2f80ed"; g.fill();
+      g.lineWidth = 3; g.strokeStyle = "#fff"; g.stroke();
+      g.fillStyle = "#fff"; g.font = `bold ${r * 1.1}px sans-serif`; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(n + 1, x, y + 1);
+    });
+    c.toBlob(b => resolve(b), "image/jpeg", 0.8);
+  });
+}
+function saveRecordSoon() { clearTimeout(recTimer); recTimer = setTimeout(() => saveRecord(false), 800); }
+async function saveRecord(final) {
+  if (!plan || !recId) return;
+  const items = recItems(), gone = goneItems();
+  if (!items.length && !gone.length) { try { await DB.del(recId); } catch (e) {} return; }
+  try {
+    const img = await recordImage(items);
+    await DB.put({ id: recId, created: +recId.slice(1), room, img, finished: final || finished,
+      items: items.map(it => ({ name: it.name, numbered: it.x != null, back: false })), gone });
+  } catch (e) { /* 保存できない画面では記録なし */ }
+}
+async function countRecords() {
+  try { $("recCount").textContent = (await DB.all()).length; } catch (e) { $("goRecords").classList.add("hidden"); }
+}
+const urls = [];
+const imgUrl = b => { const u = URL.createObjectURL(b); urls.push(u); return u; };
+async function renderRecords() {
+  $("recDetail").classList.add("hidden"); $("recList").classList.remove("hidden");
+  let list = [];
+  try { list = (await DB.all()).sort((a, b) => b.created - a.created); } catch (e) {}
+  $("recList").innerHTML = list.length ? "" : '<p class="note">まだ記録はありません。片付けのときに「残す」にした物がここに保存されます。</p>';
+  list.forEach(r => {
+    const b = document.createElement("button"); b.className = "rec";
+    const left = r.items.filter(i => !i.back).length;
+    b.innerHTML = `<img alt=""><div><b></b><small></small></div>`;
+    if (r.img) b.querySelector("img").src = imgUrl(r.img);
+    b.querySelector("b").textContent = `${new Date(r.created).toLocaleDateString("ja-JP")} ${r.room || "部屋"}`;
+    b.querySelector("small").textContent = `残した物 ${r.items.length}こ・まだ戻していない ${left}こ` + (r.finished ? "" : "（片付け中）");
+    b.onclick = () => openRecord(r);
+    $("recList").appendChild(b);
+  });
+}
+function openRecord(r) {
+  $("recList").classList.add("hidden");
+  const d = $("recDetail"); d.classList.remove("hidden");
+  let n = 0;
+  d.innerHTML = `<div class="card"><b></b><p class="note" style="margin:2px 0 8px">片付ける前の写真です。青い番号が残した物の元の場所です。</p>
+    <div class="photo"><img alt="片付ける前の写真"></div></div>
+    <div class="card"><h2>元の場所に戻す</h2><p class="note" style="margin-top:-6px">戻した物にチェックしてください。</p><div id="rItems"></div>
+    <p class="cheer hidden" id="rAll">全部戻せました！記録はいつでも消せます。</p></div>
+    <div class="card hidden" id="rGoneCard"><h2>手放した物</h2><p class="note" style="margin-top:-6px">あとで「残せばよかった」と思ったときの確認用です。</p><div class="gone" id="rGone"></div></div>
+    <button class="btn danger" id="rDel">🗑️ この写真と記録を消す</button>`;
+  d.querySelector("b").textContent = `${new Date(r.created).toLocaleString("ja-JP")} ${r.room || ""}`;
+  if (r.img) d.querySelector("img").src = imgUrl(r.img);
+  const box = d.querySelector("#rItems");
+  const allBack = () => $("rAll").classList.toggle("hidden", !r.items.every(i => i.back));
+  r.items.forEach(it => {
+    const lab = document.createElement("label"); lab.className = "ritem" + (it.back ? " ok" : "");
+    lab.innerHTML = `<input type="checkbox"><span class="rnum"></span><span></span>`;
+    lab.querySelector("input").checked = it.back;
+    lab.querySelector(".rnum").textContent = it.numbered ? ++n : "🛡";
+    lab.lastElementChild.textContent = it.name;
+    lab.querySelector("input").onchange = e => { it.back = e.target.checked; lab.classList.toggle("ok", it.back); allBack(); DB.put(r).catch(() => {}); };
+    box.appendChild(lab);
+  });
+  allBack();
+  if (r.gone && r.gone.length) { $("rGoneCard").classList.remove("hidden"); $("rGone").textContent = r.gone.join("、"); }
+  $("rDel").onclick = () => dialog("写真と記録を消しますか？", r.items.every(i => i.back) ? "全部戻せているので、消しても大丈夫です。元には戻せません。" : "まだ戻していない物があります。消すと元には戻せません。", [
+    ["消す", "danger", async () => { try { await DB.del(r.id); } catch (e) {} renderRecords(); }],
+    ["やめる", "ghost", null]
+  ]);
+  window.scrollTo(0, 0);
+}
+
+// 送る写真に青い枠と札を描く（モザイク指定なら中を粗くする）
+function markedImage() {
+  if (!protects.length) return Promise.resolve(blob);
+  return new Promise(resolve => {
+    const im = $("img"), W = im.naturalWidth, H = im.naturalHeight;
+    const c = document.createElement("canvas"); c.width = W; c.height = H;
+    const g = c.getContext("2d");
+    g.drawImage(im, 0, 0);
+    const fs = Math.max(16, W * 0.028);
+    protects.forEach((p, i) => {
+      const x = p.x / 100 * W, y = p.y / 100 * H, w = p.w / 100 * W, h = p.h / 100 * H;
+      const path = () => { g.beginPath(); p.pts.forEach((q, k) => g[k ? "lineTo" : "moveTo"](q.x / 100 * W, q.y / 100 * H)); g.closePath(); };
+      if ($("optBlur").checked && w >= 1 && h >= 1) {
+        const k = Math.max(16, Math.round(Math.min(w, h) / 6));
+        const t = document.createElement("canvas"); t.width = Math.max(1, Math.round(w / k)); t.height = Math.max(1, Math.round(h / k));
+        t.getContext("2d").drawImage(c, x, y, w, h, 0, 0, t.width, t.height);
+        g.save(); path(); g.clip();
+        g.imageSmoothingEnabled = false;
+        g.drawImage(t, 0, 0, t.width, t.height, x, y, w, h);
+        g.restore();
+      }
+      g.lineWidth = Math.max(4, W * 0.006); g.strokeStyle = "#2f80ed"; g.lineJoin = "round"; path(); g.stroke();
+      const ly = Math.max(0, y - fs * 1.5);
+      g.fillStyle = "#2f80ed"; g.fillRect(x, ly, fs * 2.6, fs * 1.5);
+      g.fillStyle = "#fff"; g.font = `bold ${fs}px sans-serif`; g.textBaseline = "middle"; g.fillText(`守${i + 1}`, x + fs * 0.3, ly + fs * 0.75);
+    });
+    c.toBlob(b => resolve(b || blob), "image/jpeg", 0.88);
+  });
+}
+</script>
+</body>
+</html>
