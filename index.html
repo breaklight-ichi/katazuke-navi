@@ -222,6 +222,7 @@ h2{font-size:17px;margin:0 0 10px}
   <div class="t-logo">片</div>
   <h1 class="t-name">片付けナビ</h1>
   <p class="t-sub">写真を撮るだけで、片付ける順番がわかる</p>
+  <p class="note" style="margin:0">版 v7</p>
   <button class="btn main t-start" id="startBtn">▶ はじめる</button>
 </section>
 
@@ -1050,7 +1051,8 @@ const done = new Set();
 // ===== Gemini（使う人の鍵で、端末から直接Googleに送る） =====
 const GEM = {
   KEY: "katazuke-gemini-key",
-  MODELS: ["gemini-3.8-flash", "gemini-3.6-flash"],
+  MODELS: ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-3.6-flash"],
+  last: null,
   get() { try { return localStorage.getItem(this.KEY) || ""; } catch (e) { return ""; } },
   set(k) { try { k ? localStorage.setItem(this.KEY, k) : localStorage.removeItem(this.KEY); return true; } catch (e) { return false; } },
 };
@@ -1072,32 +1074,87 @@ const b64 = b => new Promise((ok, ng) => {
   r.onerror = () => ng(r.error);
   r.readAsDataURL(b);
 });
-async function geminiCall(body) {
-  const key = GEM.get();
-  if (!key) throw { code: "no_key" };
-  let last = null;
-  for (const m of GEM.MODELS) {
+// 1つのモデルに頼む。答えを少しずつ受け取り（ストリーミング）、進み具合を知らせる
+async function geminiOnce(m, key, body, onProgress) {
+  const ctl = new AbortController();
+  let gotFirst = false;
+  // 90秒たっても答えが書き始められなければ、混んでいるとみなして次のモデルへ
+  const guard = setTimeout(() => { if (!gotFirst) ctl.abort(); }, 90000);
+  const t0 = Date.now(); let tFirst = 0;
+  try {
     let res;
     try {
-      res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`, {
-        method: "POST",
+      res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:streamGenerateContent?alt=sse`, {
+        method: "POST", signal: ctl.signal,
         headers: { "Content-Type": "application/json", "x-goog-api-key": key },
         body: JSON.stringify(body),
       });
-    } catch (e) { throw { code: "offline" }; }
-    if (res.ok) return res.json();
-    const t = await res.text().catch(() => "");
-    if (res.status === 404) { last = { code: "model" }; continue; }
-    if (res.status === 429) throw { code: "rate_limited" };
-    if (/API_KEY_INVALID|API key not valid|invalid api key/i.test(t)) throw { code: "bad_key" };
-    if (res.status === 401 || res.status === 403) throw { code: "key_denied" };
-    if (res.status === 400 && body.generationConfig && body.generationConfig.thinkingConfig) {
+    } catch (e) { return { err: ctl.signal.aborted ? { code: "slow" } : { code: "offline" } }; }
+    if (!res.ok) return { status: res.status, errText: await res.text().catch(() => "") };
+    let text = "", buf = "", blocked = false;
+    const take = line => {
+      if (!line.startsWith("data:")) return;
+      try {
+        const d = JSON.parse(line.slice(5));
+        const c = d.candidates && d.candidates[0];
+        if (!c) { if (d.promptFeedback && d.promptFeedback.blockReason) blocked = true; return; }
+        (c.content && c.content.parts || []).forEach(pt => {
+          if (pt.text && !pt.thought) {
+            if (!tFirst) { tFirst = Date.now(); gotFirst = true; }
+            text += pt.text;
+          }
+        });
+        if (onProgress) onProgress(text.length);
+      } catch (e) {}
+    };
+    if (res.body && res.body.getReader) {
+      const rd = res.body.getReader(), dec = new TextDecoder();
+      try {
+        for (;;) {
+          const { done, value } = await rd.read();
+          if (done) break;
+          buf += dec.decode(value, { stream: true });
+          const lines = buf.split(/\r?\n/); buf = lines.pop();
+          lines.forEach(take);
+        }
+      } catch (e) { return { err: ctl.signal.aborted ? { code: "slow" } : { code: "offline" } }; }
+      take(buf);
+    } else {
+      (await res.text()).split(/\r?\n/).forEach(take);
+    }
+    if (!text) return { err: { code: blocked ? "refused" : "refused" } };
+    GEM.last = { model: m, wait: Math.round(((tFirst || Date.now()) - t0) / 1000), write: Math.round((Date.now() - (tFirst || Date.now())) / 1000) };
+    return { text };
+  } finally { clearTimeout(guard); }
+}
+async function geminiCall(body, onProgress) {
+  const key = GEM.get();
+  if (!key) throw { code: "no_key" };
+  let last = null;
+  GEM.trail = [];
+  for (const m of GEM.MODELS) {
+    if (onProgress) onProgress(0, m);
+    let r = await geminiOnce(m, key, body, onProgress);
+    if (r.status === 400 && body.generationConfig && body.generationConfig.thinkingConfig && !/API_KEY_INVALID|API key not valid/i.test(r.errText || "")) {
       // 考える量の設定が使えないモデルなら、設定なしでもう一度
       const b2 = JSON.parse(JSON.stringify(body)); delete b2.generationConfig.thinkingConfig;
-      return geminiCall(b2);
+      r = await geminiOnce(m, key, b2, onProgress);
     }
-    if (res.status === 400) throw { code: "image_rejected" };
-    throw { code: "busy" };
+    if (r.text) return r.text;
+    const msg = ((r.errText || "").match(/"message":\s*"([^"]{0,80})/) || [])[1] || "";
+    GEM.trail.push(`${m.replace("gemini-", "")}:${r.status || (r.err && r.err.code)}${msg ? " " + msg : ""}`);
+    if (r.err) {
+      if (r.err.code === "slow") { last = r.err; continue; }
+      throw r.err;
+    }
+    const t = r.errText || "";
+    if (r.status === 404) { last = { code: "model" }; continue; }
+    if (r.status === 429) { last = { code: "rate_limited" }; continue; }
+    if (r.status === 503 || r.status === 500) { last = { code: "busy" }; continue; }
+    if (/API_KEY_INVALID|API key not valid|invalid api key/i.test(t)) throw { code: "bad_key" };
+    if (r.status === 401 || r.status === 403) throw { code: "key_denied" };
+    if (r.status === 400) throw { code: "image_rejected" };
+    last = { code: "busy" };
   }
   throw last || { code: "busy" };
 }
@@ -1109,10 +1166,7 @@ const gemini = {
       const s = await shrink(im);
       parts.push({ inline_data: { mime_type: s.type || "image/jpeg", data: await b64(s) } });
     }
-    const data = await geminiCall({ contents: [{ role: "user", parts }], generationConfig: { responseMimeType: "application/json", thinkingConfig: { thinkingLevel: "low" } } });
-    const c = data.candidates && data.candidates[0];
-    if (!c || !c.content) throw { code: "refused" };
-    const txt = (c.content.parts || []).map(p => p.text || "").join("");
+    const txt = await geminiCall({ contents: [{ role: "user", parts }], generationConfig: { responseMimeType: "application/json", thinkingConfig: { thinkingLevel: "low" } } }, opts.onProgress);
     try { return JSON.parse(txt); }
     catch (e) {
       const m = txt.match(/[\[{][\s\S]*[\]}]/);
@@ -1121,8 +1175,7 @@ const gemini = {
     }
   },
   async test() {
-    const d = await geminiCall({ contents: [{ role: "user", parts: [{ text: "「OK」とだけ返してください。" }] }] });
-    return !!(d.candidates && d.candidates.length);
+    return !!(await geminiCall({ contents: [{ role: "user", parts: [{ text: "「OK」とだけ返してください。" }] }] }));
   },
 };
 
@@ -1133,6 +1186,7 @@ const ERR = {
   offline: "インターネットにつながっていないようです。電波の良い所でもう一度お試しください。",
   model: "AIの準備ができませんでした。少し時間をおいてお試しください。",
   busy: "AIが混み合っています。少し待ってからもう一度お試しください。",
+  slow: "AIがとても混み合っています。少し時間をおいてお試しください。",
   rate_limited: "今日の無料の回数を使い切ったか、混み合っています。少し待つか、明日もう一度お試しください。",
   image_rejected: "この写真は読み込めませんでした。別の写真でお試しください。",
   invalid_json: "うまく読み取れませんでした。もう一度押してください。",
@@ -1280,19 +1334,29 @@ $("go").onclick = async () => {
   if (!GEM.get()) { openKey(true); return; }
   $("go").disabled = true;
   const t0 = Date.now();
-  const tick = () => { $("status").innerHTML = `<span class="spinner"></span>写真を見て作戦を考えています…（1分ほど）${Math.round((Date.now() - t0) / 1000)}秒`; };
+  let chars = 0;
+  const tick = () => {
+    const sec = Math.round((Date.now() - t0) / 1000);
+    $("status").innerHTML = chars
+      ? `<span class="spinner"></span>AIが答えを書いています…（${chars}文字）${sec}秒`
+      : `<span class="spinner"></span>AIが写真を見ています… ${sec}秒`;
+  };
   tick(); const timer = setInterval(tick, 1000);
+  bgm.hush(true);
   try {
     setMarkMode(false);
-    const data = await sample.json(buildPrompt(), { images: await markedImage() });
+    const data = await sample.json(buildPrompt(), { images: await markedImage(), onProgress: n => { chars = n; } });
     if (data.not_room) { showErr(data.message || "部屋の写真を選んでください。"); return; }
     if (!Array.isArray(data.steps) || !data.steps.length) throw { code: "invalid_json" };
     render(data);
-    $("status").textContent = "";
+    const L = GEM.last;
+    $("status").innerHTML = L ? `<span class="note">AI：${L.model}・見る${L.wait}秒＋書く${L.write}秒</span>` : "";
   } catch (e) {
     showErr(ERR[e && e.code] || "うまくいきませんでした。もう一度お試しください。");
+    if (GEM.trail && GEM.trail.length) $("err").insertAdjacentHTML("beforeend", `<br><span class="note">詳細（${Math.round((Date.now() - t0) / 1000)}秒）：${esc(GEM.trail.join(" ／ "))}</span>`);
   } finally {
     clearInterval(timer);
+    bgm.hush(false);
     $("go").disabled = false;
   }
 };
@@ -1732,7 +1796,7 @@ window.findPlacedItems = async (names, dataUrls) => {
 
 // ===== BGM（音源ファイルなし。ブラウザの中でやさしい曲を自動で鳴らす） =====
 const bgm = (() => {
-  let ctx = null, master = null, verb = null, timer = null, on = true, started = false, bar = 0, nextT = 0;
+  let ctx = null, master = null, verb = null, timer = null, on = true, started = false, bar = 0, nextT = 0, paused = false;
   try { on = localStorage.getItem("katazuke-bgm") !== "off"; } catch (e) {}
   const hz = m => 440 * Math.pow(2, (m - 69) / 12);
   const BPM = 74, beat = 60 / BPM;
@@ -1749,10 +1813,13 @@ const bgm = (() => {
     [[0, 69, 1], [1, 72, 1], [2, 77, 1], [3, 76, 0.5], [3.5, 74, 0.5]],
     [[0, 72, 3.5]],
   ];
+  // 響き：雑音を使わない、やわらかいこだま（ディレイ）
   function makeReverb() {
-    const len = Math.round(ctx.sampleRate * 1.6), buf = ctx.createBuffer(2, len, ctx.sampleRate);
-    for (let ch = 0; ch < 2; ch++) { const d = buf.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3); }
-    const c = ctx.createConvolver(); c.buffer = buf; return c;
+    const inp = ctx.createGain(), d = ctx.createDelay(1), fb = ctx.createGain(), f = ctx.createBiquadFilter();
+    d.delayTime.value = beat * 0.75; fb.gain.value = 0.28; f.type = "lowpass"; f.frequency.value = 1800;
+    inp.connect(d); d.connect(f); f.connect(fb); fb.connect(d);
+    const outG = ctx.createGain(); f.connect(outG);
+    inp.out = outG; return inp;
   }
   function out(node, wet) {
     node.connect(master);
@@ -1809,8 +1876,10 @@ const bgm = (() => {
     bar++;
   }
   function loop() {
-    if (!ctx) return;
-    while (nextT < ctx.currentTime + 1.5) { playBar(nextT); nextT += beat * 4; }
+    if (!ctx || paused) return;
+    // 処理が重くて遅れた時は、たまった小節を一度に鳴らさず、今から鳴らし直す（音が重なってブツブツするのを防ぐ）
+    if (nextT < ctx.currentTime) nextT = ctx.currentTime + 0.1;
+    while (nextT < ctx.currentTime + 2.5) { playBar(nextT); nextT += beat * 4; }
   }
   function play() {
     if (!ctx) {
@@ -1819,7 +1888,7 @@ const bgm = (() => {
       try { ctx = new AC({ latencyHint: "playback" }); } catch (e) { ctx = new AC(); }
       master = ctx.createGain(); master.gain.value = 0.6;
       const comp = ctx.createDynamicsCompressor(); master.connect(comp); comp.connect(ctx.destination);
-      verb = makeReverb(); const vg = ctx.createGain(); vg.gain.value = 0.4; verb.connect(vg); vg.connect(comp);
+      verb = makeReverb(); const vg = ctx.createGain(); vg.gain.value = 0.35; verb.out.connect(vg); vg.connect(comp);
     }
     if (ctx.state === "suspended") ctx.resume();
     if (!timer) { bar = 0; nextT = ctx.currentTime + 0.15; loop(); timer = setInterval(loop, 400); }
@@ -1836,7 +1905,20 @@ const bgm = (() => {
   // スマホで音が止まったら、次のタッチで再開
   document.addEventListener("pointerdown", () => { if (on && started && ctx && ctx.state !== "running") ctx.resume(); });
   label();
-  return { start() { started = true; $("bgmBtn").classList.remove("hidden"); if (on) play(); }, get started() { return started; } };
+  // AIを待つ間はスマホが忙しく音が途切れやすいので、BGMをそっと休ませる
+  function hush(yes) {
+    if (!ctx || !on) { paused = yes; return; }
+    const t = ctx.currentTime;
+    master.gain.cancelScheduledValues(t); master.gain.setValueAtTime(master.gain.value, t);
+    if (yes) {
+      paused = true; master.gain.linearRampToValueAtTime(0, t + 0.6);
+      setTimeout(() => { if (paused && ctx) ctx.suspend(); }, 700);
+    } else {
+      paused = false; ctx.resume(); master.gain.linearRampToValueAtTime(0.6, t + 1.2);
+      nextT = ctx.currentTime + 0.2; loop();
+    }
+  }
+  return { hush, start() { started = true; $("bgmBtn").classList.remove("hidden"); if (on) play(); }, get started() { return started; } };
 })();
 
 // ===== 残した物の記録（このスマホの中だけに保存） =====

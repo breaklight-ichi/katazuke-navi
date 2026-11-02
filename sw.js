@@ -1,6 +1,6 @@
 // 片付けナビ：オフラインでも画面が開くように、アプリ本体だけを保存する
 // （AIへの通信や写真は保存しない）
-const CACHE = "katazuke-v3";
+const CACHE = "katazuke-v7";
 const FILES = ["./", "index.html", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "icons/maskable-512.png"];
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
@@ -13,7 +13,8 @@ self.addEventListener("fetch", e => {
   if (e.request.method !== "GET" || u.origin !== location.origin) return;
   // 新しい版を先に取りに行き、つながらない時だけ保存した版を出す
   e.respondWith(
-    fetch(e.request).then(r => {
+    // ブラウザの一時保存を使わず、毎回GitHubに最新を確かめに行く
+    fetch(e.request, { cache: "no-cache" }).then(r => {
       const copy = r.clone();
       caches.open(CACHE).then(c => c.put(e.request, copy));
       return r;
