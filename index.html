@@ -1055,11 +1055,11 @@ const GEM = {
   set(k) { try { k ? localStorage.setItem(this.KEY, k) : localStorage.removeItem(this.KEY); return true; } catch (e) { return false; } },
 };
 async function shrink(b) {
-  // 大きな写真は長い辺1600pxに縮めて送る（速く・安くするため）
+  // 大きな写真は長い辺1280pxに縮めて送る（速く・安くするため）
   try {
     const bmp = await createImageBitmap(b);
-    const s = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
-    if (s >= 1 && b.size < 3e6) return b;
+    const s = Math.min(1, 1280 / Math.max(bmp.width, bmp.height));
+    if (s >= 1 && b.size < 1.5e6) return b;
     const c = document.createElement("canvas");
     c.width = Math.round(bmp.width * s); c.height = Math.round(bmp.height * s);
     c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
@@ -1091,6 +1091,11 @@ async function geminiCall(body) {
     if (res.status === 429) throw { code: "rate_limited" };
     if (/API_KEY_INVALID|API key not valid|invalid api key/i.test(t)) throw { code: "bad_key" };
     if (res.status === 401 || res.status === 403) throw { code: "key_denied" };
+    if (res.status === 400 && body.generationConfig && body.generationConfig.thinkingConfig) {
+      // 考える量の設定が使えないモデルなら、設定なしでもう一度
+      const b2 = JSON.parse(JSON.stringify(body)); delete b2.generationConfig.thinkingConfig;
+      return geminiCall(b2);
+    }
     if (res.status === 400) throw { code: "image_rejected" };
     throw { code: "busy" };
   }
@@ -1104,7 +1109,7 @@ const gemini = {
       const s = await shrink(im);
       parts.push({ inline_data: { mime_type: s.type || "image/jpeg", data: await b64(s) } });
     }
-    const data = await geminiCall({ contents: [{ role: "user", parts }], generationConfig: { responseMimeType: "application/json" } });
+    const data = await geminiCall({ contents: [{ role: "user", parts }], generationConfig: { responseMimeType: "application/json", thinkingConfig: { thinkingLevel: "low" } } });
     const c = data.candidates && data.candidates[0];
     if (!c || !c.content) throw { code: "refused" };
     const txt = (c.content.parts || []).map(p => p.text || "").join("");
@@ -1274,7 +1279,9 @@ $("go").onclick = async () => {
   $("err").classList.add("hidden");
   if (!GEM.get()) { openKey(true); return; }
   $("go").disabled = true;
-  $("status").innerHTML = '<span class="spinner"></span>写真を見て作戦を考えています…（30秒〜1分ほど）';
+  const t0 = Date.now();
+  const tick = () => { $("status").innerHTML = `<span class="spinner"></span>写真を見て作戦を考えています…（1分ほど）${Math.round((Date.now() - t0) / 1000)}秒`; };
+  tick(); const timer = setInterval(tick, 1000);
   try {
     setMarkMode(false);
     const data = await sample.json(buildPrompt(), { images: await markedImage() });
@@ -1285,6 +1292,7 @@ $("go").onclick = async () => {
   } catch (e) {
     showErr(ERR[e && e.code] || "うまくいきませんでした。もう一度お試しください。");
   } finally {
+    clearInterval(timer);
     $("go").disabled = false;
   }
 };
@@ -1742,7 +1750,7 @@ const bgm = (() => {
     [[0, 72, 3.5]],
   ];
   function makeReverb() {
-    const len = ctx.sampleRate * 2.8, buf = ctx.createBuffer(2, len, ctx.sampleRate);
+    const len = Math.round(ctx.sampleRate * 1.6), buf = ctx.createBuffer(2, len, ctx.sampleRate);
     for (let ch = 0; ch < 2; ch++) { const d = buf.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3); }
     const c = ctx.createConvolver(); c.buffer = buf; return c;
   }
@@ -1754,7 +1762,7 @@ const bgm = (() => {
   function keys(m, t, len, vol) {
     const g = ctx.createGain(), f = ctx.createBiquadFilter();
     f.type = "lowpass"; f.frequency.value = 2200;
-    [[1, 1, "sine"], [2, 0.18, "sine"], [3.01, 0.05, "triangle"]].forEach(([mul, a, type]) => {
+    [[1, 1, "sine"], [2, 0.15, "sine"]].forEach(([mul, a, type]) => {
       const o = ctx.createOscillator(), og = ctx.createGain();
       o.type = type; o.frequency.value = hz(m) * mul; o.detune.value = (Math.random() - 0.5) * 6;
       og.gain.value = a; o.connect(og); og.connect(f); o.start(t); o.stop(t + len + 1.6);
@@ -1769,12 +1777,12 @@ const bgm = (() => {
   function pad(ms, t, len) {
     const g = ctx.createGain(), f = ctx.createBiquadFilter();
     f.type = "lowpass"; f.frequency.value = 900;
-    ms.forEach(m => [-4, 4].forEach(dt => {
-      const o = ctx.createOscillator(); o.type = "triangle"; o.frequency.value = hz(m); o.detune.value = dt;
+    ms.forEach(m => [0].forEach(dt => {
+      const o = ctx.createOscillator(); o.type = "sine"; o.frequency.value = hz(m); o.detune.value = dt;
       o.connect(f); o.start(t); o.stop(t + len + 1.2);
     }));
-    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.018, t + 1.2);
-    g.gain.setValueAtTime(0.018, t + len - 0.3); g.gain.linearRampToValueAtTime(0, t + len + 1);
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.022, t + 1.2);
+    g.gain.setValueAtTime(0.022, t + len - 0.3); g.gain.linearRampToValueAtTime(0, t + len + 1);
     f.connect(g); out(g, 0.6);
   }
   function bass(m, t, len) {
@@ -1798,7 +1806,6 @@ const bgm = (() => {
     // 和音をやさしく分散
     [0, 1.5, 2.5].forEach((b, k) => keys(c[(k + 1) % 4] + 12, t + b * beat, beat * 1.2, 0.035));
     melody[bar % 8].forEach(([b, m, l]) => keys(m, t + b * beat + (b % 1 ? swing : 0), l * beat, 0.07));
-    for (let i = 0; i < 8; i++) shaker(t + i * beat / 2 + (i % 2 ? swing : 0), i % 2 ? 0.035 : 0.018);
     bar++;
   }
   function loop() {
@@ -1809,9 +1816,10 @@ const bgm = (() => {
     if (!ctx) {
       const AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return;
-      ctx = new AC(); master = ctx.createGain(); master.gain.value = 0.9;
+      try { ctx = new AC({ latencyHint: "playback" }); } catch (e) { ctx = new AC(); }
+      master = ctx.createGain(); master.gain.value = 0.6;
       const comp = ctx.createDynamicsCompressor(); master.connect(comp); comp.connect(ctx.destination);
-      verb = makeReverb(); const vg = ctx.createGain(); vg.gain.value = 0.5; verb.connect(vg); vg.connect(comp);
+      verb = makeReverb(); const vg = ctx.createGain(); vg.gain.value = 0.4; verb.connect(vg); vg.connect(comp);
     }
     if (ctx.state === "suspended") ctx.resume();
     if (!timer) { bar = 0; nextT = ctx.currentTime + 0.15; loop(); timer = setInterval(loop, 400); }
